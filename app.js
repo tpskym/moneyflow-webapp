@@ -2356,6 +2356,7 @@
     updateCloudAccessUI();
     if (elements.readerLinkInput) elements.readerLinkInput.value = "";
     setSyncStatus("Подключение читателя сохранено. Нажмите «Синхронизировать».");
+    showAppNotice("Подключение сохранено. Теперь нажмите «Синхронизировать».");
   }
 
   function getReaderConnectionLink() {
