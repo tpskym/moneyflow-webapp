@@ -62,6 +62,10 @@
     instructionsCloseButton: document.getElementById("instructions-close"),
     syncGoogleClientIdInput: document.getElementById("google-client-id"),
     syncGoogleFileIdInput: document.getElementById("google-file-id"),
+    syncEditorTabButton: document.getElementById("sync-tab-editor"),
+    syncReaderTabButton: document.getElementById("sync-tab-reader"),
+    syncEditorPanel: document.getElementById("sync-editor-panel"),
+    syncReaderPanel: document.getElementById("sync-reader-panel"),
     readerLinkConnect: document.getElementById("reader-link-connect"),
     readerLinkInput: document.getElementById("reader-link-input"),
     readerLinkApplyButton: document.getElementById("reader-link-apply"),
@@ -70,6 +74,7 @@
     cloudDownloadTopButton: document.getElementById("cloud-download-top"),
     cloudUploadButton: document.getElementById("cloud-upload"),
     cloudDownloadButton: document.getElementById("cloud-download"),
+    readerCloudDownloadButton: document.getElementById("reader-cloud-download"),
     readerInvite: document.getElementById("reader-invite"),
     readerEmailInput: document.getElementById("reader-email"),
     readerInviteButton: document.getElementById("reader-invite-button"),
@@ -120,6 +125,7 @@
   let categoryPickerDebounce;
   let operationLongPressTimer;
   let longPressHandledOperationId = null;
+  let activeSyncTab = "editor";
 
   async function main() {
     enableLiveReload();
@@ -131,6 +137,7 @@
     if (connectionSettings) {
       state.syncSettings = sanitizeSyncSettings({ ...state.syncSettings, ...connectionSettings, accessMode: "unknown" });
       await persistSyncSettings();
+      activeSyncTab = "reader";
     }
 
     renderSyncSettingsForm();
@@ -200,12 +207,15 @@
     elements.categoryFilterContainer?.addEventListener("click", onCategoryFilterClick);
     elements.loadMoreOperationsButton.addEventListener("click", loadMoreOperations);
     elements.readerLinkApplyButton?.addEventListener("click", onApplyReaderConnectionLink);
+    elements.syncEditorTabButton?.addEventListener("click", () => setActiveSyncTab("editor"));
+    elements.syncReaderTabButton?.addEventListener("click", () => setActiveSyncTab("reader"));
     elements.syncSaveButton?.addEventListener("click", onSyncSave);
     elements.clearDataButton?.addEventListener("click", onClearLocalData);
     elements.cloudUploadTopButton?.addEventListener("click", onCloudUpload);
     elements.cloudDownloadTopButton?.addEventListener("click", onCloudDownload);
     elements.cloudUploadButton?.addEventListener("click", onCloudUpload);
     elements.cloudDownloadButton?.addEventListener("click", onCloudDownload);
+    elements.readerCloudDownloadButton?.addEventListener("click", onCloudDownload);
     elements.readerInviteButton?.addEventListener("click", onInviteReader);
     elements.readerConnectionShareButton?.addEventListener("click", onShareReaderConnection);
     elements.readerAccessRefreshButton?.addEventListener("click", loadReaderPermissions);
@@ -1310,6 +1320,22 @@
     const hiddenLabel = open ? "Скрыть настройки синхронизации" : "Настройки синхронизации";
     elements.syncToggleButton.setAttribute("aria-label", hiddenLabel);
     elements.syncToggleButton.setAttribute("title", hiddenLabel);
+    if (open) renderSyncTabs();
+  }
+
+  function setActiveSyncTab(tab) {
+    activeSyncTab = tab === "reader" ? "reader" : "editor";
+    renderSyncTabs();
+  }
+
+  function renderSyncTabs() {
+    const isReaderTab = activeSyncTab === "reader";
+    elements.syncEditorTabButton?.classList.toggle("is-active", !isReaderTab);
+    elements.syncReaderTabButton?.classList.toggle("is-active", isReaderTab);
+    elements.syncEditorTabButton?.setAttribute("aria-selected", String(!isReaderTab));
+    elements.syncReaderTabButton?.setAttribute("aria-selected", String(isReaderTab));
+    if (elements.syncEditorPanel) elements.syncEditorPanel.hidden = isReaderTab;
+    if (elements.syncReaderPanel) elements.syncReaderPanel.hidden = !isReaderTab;
   }
 
   function updateCloudAccessUI() {
@@ -1320,9 +1346,7 @@
     const canUpload = hasClientId && (!hasFileId || !isNotWriter);
     const canSync = hasClientId;
 
-    if (elements.readerLinkConnect) {
-      elements.readerLinkConnect.hidden = hasClientId || hasFileId;
-    }
+    if (elements.readerLinkConnect) elements.readerLinkConnect.hidden = false;
 
     [elements.cloudUploadTopButton, elements.cloudUploadButton].forEach((button) => {
       if (button) button.hidden = !canUpload;

@@ -671,6 +671,52 @@ textarea:focus-visible {
   margin-bottom: 18px;
 }
 
+.sync-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.sync-tab {
+  min-height: 48px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(30, 41, 59, 0.72);
+  color: var(--muted);
+  font: inherit;
+  font-weight: 750;
+}
+
+.sync-tab.is-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #082033;
+}
+
+.sync-tab-panel[hidden] {
+  display: none;
+}
+
+.sync-tab-intro {
+  margin: 0 0 16px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.sync-tab-panel > .reader-connection:first-of-type {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.sync-buttons--shared {
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+
 .sync-card .field {
   gap: 8px;
   margin-bottom: 14px;

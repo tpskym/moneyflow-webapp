@@ -13,7 +13,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icons/moneyflow.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="icons/moneyflow.svg" />
-    <link rel="stylesheet" href="styles.css?v=77" />
+    <link rel="stylesheet" href="styles.css?v=78" />
   </head>
   <body>
     <div class="page">
@@ -21,7 +21,7 @@
         <div class="header-heading">
           <p class="eyebrow">Личный счёт</p>
           <h1>MoneyFlow</h1>
-          <p class="subtitle">Учет доходов и расходов <span class="app-version">v77</span></p>
+          <p class="subtitle">Учет доходов и расходов <span class="app-version">v78</span></p>
         </div>
         <div class="header-tools">
           <button
@@ -73,57 +73,72 @@
             <li>В Credentials создайте OAuth Client ID типа Web application.</li>
             <li>Добавьте в Authorized JavaScript origins адрес <code>https://tpskym.github.io</code>.</li>
             <li>Скопируйте Client ID в настройки приложения и нажмите «Сохранить настройки». Затем нажмите «Выгрузить»: при первом запуске она создаст JSON-файл в Google Drive и полностью запишет в него текущие данные этого устройства.</li>
-            <li>После первой выгрузки введите Google e-mail читателя в настройках и нажмите «Открыть доступ читателю». Google отправит письмо со ссылкой подключения, которую читатель откроет на своем устройстве.</li>
+            <li>После первой выгрузки введите Gmail читателя и нажмите «Открыть доступ читателю». Затем отправьте ему показанную ссылку через мессенджер.</li>
           </ol>
           <button id="instructions-close" type="button" class="btn btn--secondary">Закрыть инструкцию</button>
         </section>
 
         <section class="card sync-card" id="sync-settings-section" hidden>
           <h2>Google Drive</h2>
-          <label id="google-client-id-field" class="field">
-            OAuth Client ID
-            <input id="google-client-id" type="text" autocomplete="off" placeholder="...apps.googleusercontent.com" />
-          </label>
-          <input id="google-file-id" type="hidden" />
-          <div id="reader-link-connect" class="reader-connection">
-            <label class="field">
-              Ссылка подключения
-              <input id="reader-link-input" type="url" inputmode="url" autocomplete="off" placeholder="Вставьте ссылку от ведущего устройства" />
-              <small class="field-hint">Откройте ссылку из мессенджера или вставьте её сюда.</small>
+          <div class="sync-tabs" role="tablist" aria-label="Режим устройства">
+            <button id="sync-tab-editor" type="button" class="sync-tab is-active" role="tab" aria-selected="true">Редактор</button>
+            <button id="sync-tab-reader" type="button" class="sync-tab" role="tab" aria-selected="false">Читатель</button>
+          </div>
+          <section id="sync-editor-panel" class="sync-tab-panel" role="tabpanel">
+            <p class="sync-tab-intro">Устройство редактора создаёт файл, изменяет данные и выдаёт доступ читателям.</p>
+            <label id="google-client-id-field" class="field">
+              OAuth Client ID
+              <input id="google-client-id" type="text" autocomplete="off" placeholder="...apps.googleusercontent.com" />
             </label>
-            <button id="reader-link-apply" type="button" class="btn btn--secondary">Подключиться по ссылке</button>
-          </div>
-          <div class="sync-buttons">
-            <button id="cloud-save" type="button" class="btn btn--secondary">Сохранить настройки</button>
-            <button id="cloud-download" type="button" class="btn btn--secondary">Синхронизировать</button>
-            <button id="cloud-upload" type="button" class="btn">Выгрузить в облако</button>
-            <button id="cloud-clear-data" type="button" class="btn btn--danger">Очистить локальные данные</button>
-          </div>
-          <div id="reader-invite" class="reader-invite" hidden>
-            <label class="field">
-              Gmail-адрес читателя
-              <input id="reader-email" type="email" inputmode="email" autocomplete="email" placeholder="name@gmail.com" />
-              <small class="field-hint">Адрес нужен только для выдачи доступа. Письмо Google Drive не отправляется.</small>
-            </label>
-            <button id="reader-invite-button" type="button" class="btn btn--secondary">Открыть доступ читателю</button>
-            <div id="reader-invite-status" class="reader-invite-status" aria-live="polite"></div>
-          </div>
-          <div id="reader-connection" class="reader-connection" hidden>
-            <p>Передайте эту ссылку читателю через мессенджер или другое приложение.</p>
-            <label class="field">
-              Ссылка подключения
-              <input id="reader-connection-link" type="text" readonly />
-            </label>
-            <button id="reader-connection-share" type="button" class="btn btn--secondary">Отправить ссылку</button>
-            <div id="reader-connection-status" class="reader-invite-status" aria-live="polite"></div>
-          </div>
-          <div id="reader-access-management" class="reader-access-management" hidden>
-            <div class="reader-access-heading">
-              <h3>Читатели</h3>
-              <button id="reader-access-refresh" type="button" class="btn btn--small btn--secondary">Обновить список</button>
+            <input id="google-file-id" type="hidden" />
+            <div class="sync-buttons">
+              <button id="cloud-save" type="button" class="btn btn--secondary">Сохранить настройки</button>
+              <button id="cloud-upload" type="button" class="btn">Выгрузить в облако</button>
+              <button id="cloud-download" type="button" class="btn btn--secondary">Загрузить из облака</button>
             </div>
-            <div id="reader-access-list" class="reader-access-list" aria-live="polite"></div>
-            <div id="reader-access-status" class="reader-invite-status" aria-live="polite"></div>
+            <div id="reader-invite" class="reader-invite" hidden>
+              <label class="field">
+                Gmail-адрес читателя
+                <input id="reader-email" type="email" inputmode="email" autocomplete="email" placeholder="name@gmail.com" />
+                <small class="field-hint">Адрес нужен только для выдачи доступа. Письмо Google Drive не отправляется.</small>
+              </label>
+              <button id="reader-invite-button" type="button" class="btn btn--secondary">Открыть доступ читателю</button>
+              <div id="reader-invite-status" class="reader-invite-status" aria-live="polite"></div>
+            </div>
+            <div id="reader-connection" class="reader-connection" hidden>
+              <p>Передайте эту ссылку читателю через мессенджер или другое приложение.</p>
+              <label class="field">
+                Ссылка подключения
+                <input id="reader-connection-link" type="text" readonly />
+              </label>
+              <button id="reader-connection-share" type="button" class="btn btn--secondary">Отправить ссылку</button>
+              <div id="reader-connection-status" class="reader-invite-status" aria-live="polite"></div>
+            </div>
+            <div id="reader-access-management" class="reader-access-management" hidden>
+              <div class="reader-access-heading">
+                <h3>Читатели</h3>
+                <button id="reader-access-refresh" type="button" class="btn btn--small btn--secondary">Обновить список</button>
+              </div>
+              <div id="reader-access-list" class="reader-access-list" aria-live="polite"></div>
+              <div id="reader-access-status" class="reader-invite-status" aria-live="polite"></div>
+            </div>
+          </section>
+          <section id="sync-reader-panel" class="sync-tab-panel" role="tabpanel" hidden>
+            <p class="sync-tab-intro">Устройство читателя получает данные из облака и не может их изменять.</p>
+            <div id="reader-link-connect" class="reader-connection">
+              <label class="field">
+                Ссылка подключения
+                <input id="reader-link-input" type="url" inputmode="url" autocomplete="off" placeholder="Вставьте ссылку от редактора" />
+                <small class="field-hint">Откройте ссылку из мессенджера или вставьте её сюда.</small>
+              </label>
+              <button id="reader-link-apply" type="button" class="btn btn--secondary">Подключиться по ссылке</button>
+            </div>
+            <div class="sync-buttons">
+              <button id="reader-cloud-download" type="button" class="btn">Синхронизировать</button>
+            </div>
+          </section>
+          <div class="sync-buttons sync-buttons--shared">
+            <button id="cloud-clear-data" type="button" class="btn btn--danger">Очистить локальные данные</button>
           </div>
           <div class="muted">Режим устройства определяется Google Drive при синхронизации. Выгрузка полностью заменяет файл в облаке.</div>
           <div id="cloud-status" class="muted" aria-live="polite"></div>
@@ -252,6 +267,6 @@
     </div>
 
     <script src="https://accounts.google.com/gsi/client" async></script>
-    <script src="app.js?v=77" defer></script>
+    <script src="app.js?v=78" defer></script>
   </body>
 </html>
