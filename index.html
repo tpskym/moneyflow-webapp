@@ -13,7 +13,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icons/moneyflow.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="icons/moneyflow.svg" />
-    <link rel="stylesheet" href="styles.css?v=70" />
+    <link rel="stylesheet" href="styles.css?v=71" />
   </head>
   <body>
     <div class="page">
@@ -21,7 +21,7 @@
         <div class="header-heading">
           <p class="eyebrow">Личный счёт</p>
           <h1>MoneyFlow</h1>
-          <p class="subtitle">Учет доходов и расходов <span class="app-version">v70</span></p>
+          <p class="subtitle">Учет доходов и расходов <span class="app-version">v71</span></p>
         </div>
         <div class="header-tools">
           <button
@@ -98,6 +98,7 @@
               <small class="field-hint">Укажите адрес почты Google, например name@gmail.com.</small>
             </label>
             <button id="reader-invite-button" type="button" class="btn btn--secondary">Открыть доступ читателю</button>
+            <div id="reader-invite-status" class="reader-invite-status" aria-live="polite"></div>
           </div>
           <div class="muted">Режим устройства определяется Google Drive при синхронизации. Выгрузка полностью заменяет файл в облаке.</div>
           <div id="cloud-status" class="muted" aria-live="polite"></div>
@@ -226,6 +227,6 @@
     </div>
 
     <script src="https://accounts.google.com/gsi/client" async></script>
-    <script src="app.js?v=70" defer></script>
+    <script src="app.js?v=71" defer></script>
   </body>
 </html>

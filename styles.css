@@ -699,6 +699,21 @@ textarea:focus-visible {
   border-top: 1px solid var(--line);
 }
 
+.reader-invite-status {
+  min-height: 20px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.reader-invite-status[data-state="success"] {
+  color: #86efac;
+}
+
+.reader-invite-status[data-state="error"] {
+  color: #fda4af;
+}
+
 
 .muted {
   color: var(--muted);

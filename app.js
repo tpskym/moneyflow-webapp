@@ -70,6 +70,7 @@
     readerInvite: document.getElementById("reader-invite"),
     readerEmailInput: document.getElementById("reader-email"),
     readerInviteButton: document.getElementById("reader-invite-button"),
+    readerInviteStatus: document.getElementById("reader-invite-status"),
     syncStatus: document.getElementById("cloud-status"),
     clearDataButton: document.getElementById("cloud-clear-data"),
     quickAddToggleButton: document.getElementById("quick-add-toggle"),
@@ -1770,15 +1771,18 @@
     const email = String(elements.readerEmailInput?.value || "").trim();
     if (!/^\S+@\S+\.\S+$/.test(email)) {
       setSyncStatus("Укажите корректный Google e-mail читателя.");
+      setReaderInviteStatus("Укажите корректный Gmail-адрес читателя.", "error");
       elements.readerEmailInput?.focus();
       return;
     }
     if (!state.syncSettings.googleFileId || state.syncSettings.accessMode !== "writer") {
       setSyncStatus("Открыть доступ может только ведущее устройство после первой выгрузки.");
+      setReaderInviteStatus("Сначала выполните первую выгрузку из ведущего устройства.", "error");
       return;
     }
 
     setSyncStatus("Выдаю читателю доступ к файлу Google Drive...");
+    setReaderInviteStatus("Отправляю приглашение...", "");
     try {
       const accessToken = await getGoogleAccessToken("https://www.googleapis.com/auth/drive.file");
       const connectionLink = getReaderConnectionLink();
@@ -1797,8 +1801,20 @@
       if (!response.ok) throw new Error(`Google Drive: ${response.status}`);
       elements.readerEmailInput.value = "";
       setSyncStatus(`Доступ на чтение и ссылка подключения отправлены: ${email}.`);
+      setReaderInviteStatus(`Письмо с доступом и ссылкой отправлено на ${email}.`, "success");
     } catch (error) {
       setSyncStatus(`Не удалось открыть доступ: ${error?.message || "неизвестная ошибка"}`);
+      setReaderInviteStatus(`Отправка не выполнена: ${error?.message || "неизвестная ошибка"}`, "error");
+    }
+  }
+
+  function setReaderInviteStatus(message, state) {
+    if (!elements.readerInviteStatus) return;
+    elements.readerInviteStatus.textContent = message || "";
+    if (state) {
+      elements.readerInviteStatus.dataset.state = state;
+    } else {
+      delete elements.readerInviteStatus.dataset.state;
     }
   }
 
