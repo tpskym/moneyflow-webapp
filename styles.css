@@ -655,9 +655,7 @@ textarea:focus-visible {
   position: relative;
   display: grid;
   grid-template-columns: 60px 1fr auto;
-  grid-template-areas:
-    "menu title amount"
-    "menu meta amount";
+  grid-template-areas: "menu title amount";
   align-items: stretch;
   gap: 8px 12px;
   padding: 12px 0;

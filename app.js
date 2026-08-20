@@ -1407,9 +1407,6 @@
             <div class="operation-category"><strong>${escapeHtml(category)}</strong></div>
             ${description ? `<div class="operation-description">${escapeHtml(description)}</div>` : ""}
           </div>
-          <div class="operation-meta">
-            <span>Остаток: ${formatMoney(operation.balanceAfter)} ₽</span>
-          </div>
           <div class="operation-amount ${amountClass}">
             ${signChar} ${formatMoney(visibleAmount)} ₽
           </div>
