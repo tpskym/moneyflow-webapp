@@ -7,6 +7,10 @@
 
   const DEFAULT_CATEGORIES = [];
 
+  const PASSWORD_CIPHER_PREFIX = "moneyflow-aes-gcm-v1:";
+  const PASSWORD_CRYPTO_DB = "moneyflow-security-v1";
+  const PASSWORD_CRYPTO_STORE = "keys";
+  const PASSWORD_CRYPTO_KEY_ID = "webdav-password";
   const CATEGORY_PAGE_SIZE = 20;
   const CATEGORY_SEARCH_SIMILARITY_THRESHOLD = 0.48;
   const CURRENT_YEAR_LOOKBACK = 5;
@@ -88,12 +92,22 @@
   let operationLongPressTimer;
   let longPressHandledOperationId = null;
 
-  function main() {
+  async function main() {
     enableLiveReload();
     const persistedOperations = readJson(STORAGE_KEYS.operations, []);
     state.operations = sanitizeOperations(persistedOperations);
     state.categories = sanitizeCategories(readJson(STORAGE_KEYS.categories, DEFAULT_CATEGORIES));
-    state.syncSettings = sanitizeSyncSettings(readJson(STORAGE_KEYS.syncSettings, state.syncSettings));
+    const storedSyncSettings = sanitizeSyncSettings(readJson(STORAGE_KEYS.syncSettings, state.syncSettings));
+    try {
+      const restoredSettings = await restoreSyncSettings(storedSyncSettings);
+      state.syncSettings = restoredSettings.settings;
+      if (restoredSettings.needsEncryption) {
+        await persistSyncSettings();
+      }
+    } catch {
+      state.syncSettings = { ...storedSyncSettings, password: "" };
+      writeJson(STORAGE_KEYS.syncSettings, state.syncSettings);
+    }
 
     renderSyncSettingsForm();
     syncApplyTypeFromState();
@@ -252,7 +266,7 @@
     }
   }
 
-  function onSyncSave({ close = true } = {}) {
+  async function onSyncSave({ close = true } = {}) {
     const previousLastSyncedAt = state.syncSettings.lastSyncedAt || "";
     state.syncSettings = sanitizeSyncSettings({
       webdavPath: elements.syncWebDavPathInput?.value || "",
@@ -260,14 +274,20 @@
       password: elements.syncPasswordInput?.value || "",
       lastSyncedAt: previousLastSyncedAt,
     });
-    writeJson(STORAGE_KEYS.syncSettings, state.syncSettings);
+    try {
+      await persistSyncSettings();
+    } catch {
+      setSyncStatus("Не удалось безопасно сохранить пароль. Проверьте, что сайт открыт по HTTPS.");
+      return false;
+    }
     setSyncStatus("Настройки сохранены.");
     if (close) {
       updateSyncSettingsVisibility(false);
     }
+    return true;
   }
 
-  function onClearLocalData() {
+  async function onClearLocalData() {
     const confirmed = window.confirm("Удалить все локальные операции, категории и сбросить дату последней синхронизации?");
     if (!confirmed) return;
 
@@ -287,7 +307,11 @@
     }
     writeJson(STORAGE_KEYS.operations, state.operations);
     writeJson(STORAGE_KEYS.categories, state.categories);
-    writeJson(STORAGE_KEYS.syncSettings, state.syncSettings);
+    try {
+      await persistSyncSettings();
+    } catch {
+      setSyncStatus("Не удалось безопасно сохранить настройки синхронизации.");
+    }
 
     if (elements.form) {
       elements.form.reset();
@@ -317,6 +341,7 @@
         const registrations = await navigator.serviceWorker.getRegistrations();
         await Promise.all(registrations.map((registration) => registration.unregister()));
       }
+      await deletePasswordCryptoDatabase();
     } catch {
       // Reloading still clears local application state if cache access is unavailable.
     }
@@ -324,8 +349,12 @@
     window.location.replace(`${window.location.pathname}?refresh=${Date.now()}`);
   }
 
-  function onSyncNow() {
-    onSyncSave({ close: false });
+  async function onSyncNow() {
+    const saved = await onSyncSave({ close: false });
+    if (!saved) {
+      updateSyncSettingsVisibility(true);
+      return;
+    }
     const missingSyncSettings = getMissingSyncSettings();
     if (missingSyncSettings.length > 0) {
       updateSyncSettingsVisibility(true);
@@ -1453,6 +1482,122 @@
     };
   }
 
+  async function restoreSyncSettings(storedSettings) {
+    if (!storedSettings.password) {
+      return { settings: storedSettings, needsEncryption: false };
+    }
+    if (!storedSettings.password.startsWith(PASSWORD_CIPHER_PREFIX)) {
+      return { settings: storedSettings, needsEncryption: true };
+    }
+
+    return {
+      settings: {
+        ...storedSettings,
+        password: await decryptStoredPassword(storedSettings.password),
+      },
+      needsEncryption: false,
+    };
+  }
+
+  async function persistSyncSettings() {
+    const encryptedPassword = await encryptStoredPassword(state.syncSettings.password);
+    writeJson(STORAGE_KEYS.syncSettings, {
+      ...state.syncSettings,
+      password: encryptedPassword,
+    });
+  }
+
+  async function encryptStoredPassword(password) {
+    const value = String(password || "");
+    if (!value) return "";
+
+    const key = await getPasswordCryptoKey();
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const encrypted = await crypto.subtle.encrypt(
+      { name: "AES-GCM", iv },
+      key,
+      new TextEncoder().encode(value),
+    );
+    return `${PASSWORD_CIPHER_PREFIX}${bytesToBase64(iv)}.${bytesToBase64(new Uint8Array(encrypted))}`;
+  }
+
+  async function decryptStoredPassword(payload) {
+    const encoded = String(payload || "").slice(PASSWORD_CIPHER_PREFIX.length);
+    const [ivValue, encryptedValue] = encoded.split(".");
+    if (!ivValue || !encryptedValue) throw new Error("Некорректный формат зашифрованного пароля");
+
+    const key = await getPasswordCryptoKey();
+    const decrypted = await crypto.subtle.decrypt(
+      { name: "AES-GCM", iv: base64ToBytes(ivValue) },
+      key,
+      base64ToBytes(encryptedValue),
+    );
+    return new TextDecoder().decode(decrypted);
+  }
+
+  async function getPasswordCryptoKey() {
+    if (!globalThis.isSecureContext || !globalThis.crypto?.subtle || !globalThis.indexedDB) {
+      throw new Error("Web Crypto недоступен");
+    }
+
+    const database = await openPasswordCryptoDatabase();
+    try {
+      const existingKey = await readPasswordCryptoKey(database);
+      if (existingKey) return existingKey;
+
+      const createdKey = await crypto.subtle.generateKey(
+        { name: "AES-GCM", length: 256 },
+        false,
+        ["encrypt", "decrypt"],
+      );
+      await savePasswordCryptoKey(database, createdKey);
+      return createdKey;
+    } finally {
+      database.close();
+    }
+  }
+
+  function openPasswordCryptoDatabase() {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(PASSWORD_CRYPTO_DB, 1);
+      request.onupgradeneeded = () => {
+        if (!request.result.objectStoreNames.contains(PASSWORD_CRYPTO_STORE)) {
+          request.result.createObjectStore(PASSWORD_CRYPTO_STORE);
+        }
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  function readPasswordCryptoKey(database) {
+    return new Promise((resolve, reject) => {
+      const request = database.transaction(PASSWORD_CRYPTO_STORE, "readonly")
+        .objectStore(PASSWORD_CRYPTO_STORE)
+        .get(PASSWORD_CRYPTO_KEY_ID);
+      request.onsuccess = () => resolve(request.result || null);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  function savePasswordCryptoKey(database, key) {
+    return new Promise((resolve, reject) => {
+      const transaction = database.transaction(PASSWORD_CRYPTO_STORE, "readwrite");
+      transaction.objectStore(PASSWORD_CRYPTO_STORE).put(key, PASSWORD_CRYPTO_KEY_ID);
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error);
+    });
+  }
+
+  function deletePasswordCryptoDatabase() {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.deleteDatabase(PASSWORD_CRYPTO_DB);
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+      request.onblocked = () => reject(new Error("Хранилище ключа занято"));
+    });
+  }
+
   function sanitizeOperations(operations) {
     if (!Array.isArray(operations)) {
       return [];
@@ -1599,7 +1744,7 @@
       state.operations = mergedOperations;
       writeJson(STORAGE_KEYS.categories, state.categories);
       writeJson(STORAGE_KEYS.operations, state.operations);
-      writeJson(STORAGE_KEYS.syncSettings, state.syncSettings);
+      await persistSyncSettings();
       renderCategoryOptions();
       state.currentPage = 1;
       render();
@@ -2037,6 +2182,17 @@
 
   function writeJson(key, value) {
     localStorage.setItem(key, JSON.stringify(value));
+  }
+
+  function bytesToBase64(bytes) {
+    let binary = "";
+    for (const byte of bytes) binary += String.fromCharCode(byte);
+    return btoa(binary);
+  }
+
+  function base64ToBytes(value) {
+    const binary = atob(value);
+    return Uint8Array.from(binary, (char) => char.charCodeAt(0));
   }
 
   function readJson(key, fallback) {
