@@ -13,7 +13,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icons/moneyflow.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="icons/moneyflow.svg" />
-    <link rel="stylesheet" href="styles.css?v=75" />
+    <link rel="stylesheet" href="styles.css?v=76" />
   </head>
   <body>
     <div class="page">
@@ -21,7 +21,7 @@
         <div class="header-heading">
           <p class="eyebrow">Личный счёт</p>
           <h1>MoneyFlow</h1>
-          <p class="subtitle">Учет доходов и расходов <span class="app-version">v75</span></p>
+          <p class="subtitle">Учет доходов и расходов <span class="app-version">v76</span></p>
         </div>
         <div class="header-tools">
           <button
@@ -85,6 +85,14 @@
             <input id="google-client-id" type="text" autocomplete="off" placeholder="...apps.googleusercontent.com" />
           </label>
           <input id="google-file-id" type="hidden" />
+          <div id="reader-link-connect" class="reader-connection">
+            <label class="field">
+              Ссылка подключения
+              <input id="reader-link-input" type="url" inputmode="url" autocomplete="off" placeholder="Вставьте ссылку от ведущего устройства" />
+              <small class="field-hint">Откройте ссылку из мессенджера или вставьте её сюда.</small>
+            </label>
+            <button id="reader-link-apply" type="button" class="btn btn--secondary">Подключиться по ссылке</button>
+          </div>
           <div class="sync-buttons">
             <button id="cloud-save" type="button" class="btn btn--secondary">Сохранить настройки</button>
             <button id="cloud-download" type="button" class="btn btn--secondary">Синхронизировать</button>
@@ -244,6 +252,6 @@
     </div>
 
     <script src="https://accounts.google.com/gsi/client" async></script>
-    <script src="app.js?v=75" defer></script>
+    <script src="app.js?v=76" defer></script>
   </body>
 </html>

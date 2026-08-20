@@ -62,6 +62,9 @@
     instructionsCloseButton: document.getElementById("instructions-close"),
     syncGoogleClientIdInput: document.getElementById("google-client-id"),
     syncGoogleFileIdInput: document.getElementById("google-file-id"),
+    readerLinkConnect: document.getElementById("reader-link-connect"),
+    readerLinkInput: document.getElementById("reader-link-input"),
+    readerLinkApplyButton: document.getElementById("reader-link-apply"),
     syncSaveButton: document.getElementById("cloud-save"),
     cloudUploadTopButton: document.getElementById("cloud-upload-top"),
     cloudDownloadTopButton: document.getElementById("cloud-download-top"),
@@ -196,6 +199,7 @@
     elements.yearFilterContainer?.addEventListener("click", onYearFilterClick);
     elements.categoryFilterContainer?.addEventListener("click", onCategoryFilterClick);
     elements.loadMoreOperationsButton.addEventListener("click", loadMoreOperations);
+    elements.readerLinkApplyButton?.addEventListener("click", onApplyReaderConnectionLink);
     elements.syncSaveButton?.addEventListener("click", onSyncSave);
     elements.clearDataButton?.addEventListener("click", onClearLocalData);
     elements.cloudUploadTopButton?.addEventListener("click", onCloudUpload);
@@ -1316,6 +1320,10 @@
     const canUpload = hasClientId && (!hasFileId || !isNotWriter);
     const canSync = hasClientId;
 
+    if (elements.readerLinkConnect) {
+      elements.readerLinkConnect.hidden = hasClientId || hasFileId;
+    }
+
     [elements.cloudUploadTopButton, elements.cloudUploadButton].forEach((button) => {
       if (button) button.hidden = !canUpload;
     });
@@ -1781,6 +1789,37 @@
     const cleanUrl = `${url.pathname}${url.search}${url.hash}`;
     history.replaceState({}, document.title, cleanUrl);
     return { googleClientId, googleFileId };
+  }
+
+  async function onApplyReaderConnectionLink() {
+    const value = (elements.readerLinkInput?.value || "").trim();
+    let url;
+    try {
+      url = new URL(value);
+    } catch {
+      setSyncStatus("Вставьте корректную ссылку подключения из приложения MoneyFlow.");
+      return;
+    }
+
+    const googleClientId = url.searchParams.get("mf_google_client") || "";
+    const googleFileId = url.searchParams.get("mf_google_file") || "";
+    if (!googleClientId || !googleFileId) {
+      setSyncStatus("В ссылке нет данных подключения MoneyFlow.");
+      return;
+    }
+
+    state.syncSettings = sanitizeSyncSettings({
+      ...state.syncSettings,
+      googleClientId,
+      googleFileId,
+      accessMode: "unknown",
+      googleAccountEmail: "",
+    });
+    await persistSyncSettings();
+    renderSyncSettingsForm();
+    updateCloudAccessUI();
+    if (elements.readerLinkInput) elements.readerLinkInput.value = "";
+    setSyncStatus("Подключение читателя сохранено. Нажмите «Синхронизировать».");
   }
 
   function getReaderConnectionLink() {
