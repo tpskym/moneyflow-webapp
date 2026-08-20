@@ -13,14 +13,14 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icons/moneyflow.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="icons/moneyflow.svg" />
-    <link rel="stylesheet" href="styles.css?v=104" />
+    <link rel="stylesheet" href="styles.css?v=106" />
   </head>
   <body>
     <div class="page">
       <header class="header">
         <div class="header-heading">
           <p class="eyebrow">Личный счёт</p>
-          <div class="brand-title-row"><h1>M-Flow</h1><span class="app-version">v104</span></div>
+          <div class="brand-title-row"><h1>M-Flow</h1><span class="app-version">v106</span></div>
           <p class="subtitle"><span class="subtitle-label">Учет доходов и расходов</span></p>
         </div>
         <div class="header-tools">
@@ -127,7 +127,10 @@
                 Ссылка подключения
                 <div class="reader-link-row">
                   <input id="reader-connection-link" type="text" readonly />
-                  <button id="reader-connection-refresh" type="button" class="btn btn--secondary">Обновить</button>
+                  <button id="reader-connection-refresh" type="button" class="btn btn--secondary reader-connection-refresh" aria-label="Обновить ссылку" title="Обновить ссылку">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0 2.1 5.4"></path><path d="M20 4v7h-7"></path></svg>
+                    <span class="sr-only">Обновить ссылку</span>
+                  </button>
                 </div>
               </label>
               <button id="reader-connection-share" type="button" class="btn btn--secondary">Отправить ссылку</button>
@@ -313,6 +316,6 @@
     <div id="app-notice" class="app-notice" role="status" aria-live="polite" hidden></div>
 
     <script src="https://accounts.google.com/gsi/client" async></script>
-    <script src="app.js?v=104" defer></script>
+    <script src="app.js?v=106" defer></script>
   </body>
 </html>
