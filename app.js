@@ -56,6 +56,7 @@
     categoryFilterContainer: document.getElementById("category-filters"),
     syncToggleButton: document.getElementById("sync-settings-toggle"),
     syncSettingsCard: document.getElementById("sync-settings-section"),
+    syncGoogleClientIdField: document.getElementById("google-client-id-field"),
     instructionsToggleButton: document.getElementById("instructions-toggle"),
     instructionsCard: document.getElementById("instructions-section"),
     instructionsCloseButton: document.getElementById("instructions-close"),
@@ -66,6 +67,9 @@
     cloudDownloadTopButton: document.getElementById("cloud-download-top"),
     cloudUploadButton: document.getElementById("cloud-upload"),
     cloudDownloadButton: document.getElementById("cloud-download"),
+    readerInvite: document.getElementById("reader-invite"),
+    readerEmailInput: document.getElementById("reader-email"),
+    readerInviteButton: document.getElementById("reader-invite-button"),
     syncStatus: document.getElementById("cloud-status"),
     clearDataButton: document.getElementById("cloud-clear-data"),
     quickAddToggleButton: document.getElementById("quick-add-toggle"),
@@ -109,10 +113,18 @@
     state.operations = sanitizeOperations(persistedOperations);
     state.categories = sanitizeCategories(readJson(STORAGE_KEYS.categories, DEFAULT_CATEGORIES));
     state.syncSettings = sanitizeSyncSettings(readJson(STORAGE_KEYS.syncSettings, state.syncSettings));
+    const connectionSettings = consumeCloudConnectionSettings();
+    if (connectionSettings) {
+      state.syncSettings = sanitizeSyncSettings({ ...state.syncSettings, ...connectionSettings, accessMode: "unknown" });
+      await persistSyncSettings();
+    }
 
     renderSyncSettingsForm();
     updateCloudAccessUI();
     renderLastSuccessfulSync();
+    if (connectionSettings) {
+      setSyncStatus("Подключение читателя сохранено. Нажмите «Синхронизировать».");
+    }
     syncApplyTypeFromState();
     updateSyncSettingsVisibility(false);
     updateInstructionsVisibility(false);
@@ -179,6 +191,7 @@
     elements.cloudDownloadTopButton?.addEventListener("click", onCloudDownload);
     elements.cloudUploadButton?.addEventListener("click", onCloudUpload);
     elements.cloudDownloadButton?.addEventListener("click", onCloudDownload);
+    elements.readerInviteButton?.addEventListener("click", onInviteReader);
     elements.syncToggleButton?.addEventListener("click", onSyncToggle);
     elements.instructionsToggleButton?.addEventListener("click", onInstructionsToggle);
     elements.instructionsCloseButton?.addEventListener("click", () => updateInstructionsVisibility(false));
@@ -309,9 +322,10 @@
   }
 
   async function onSyncSave({ close = true } = {}) {
-    const googleFileId = (elements.syncGoogleFileIdInput?.value || "").trim();
+    const googleClientId = (elements.syncGoogleClientIdInput?.value || state.syncSettings.googleClientId || "").trim();
+    const googleFileId = (elements.syncGoogleFileIdInput?.value || state.syncSettings.googleFileId || "").trim();
     state.syncSettings = sanitizeSyncSettings({
-      googleClientId: elements.syncGoogleClientIdInput?.value || "",
+      googleClientId,
       googleFileId,
       accessMode: googleFileId === state.syncSettings.googleFileId ? state.syncSettings.accessMode : "unknown",
     });
@@ -1286,6 +1300,12 @@
     if (elements.quickAddToggleButton) {
       elements.quickAddToggleButton.hidden = isReadOnly;
     }
+    if (elements.syncGoogleClientIdField) {
+      elements.syncGoogleClientIdField.hidden = hasFileId;
+    }
+    if (elements.readerInvite) {
+      elements.readerInvite.hidden = !(hasClientId && hasFileId && state.syncSettings.accessMode === "writer");
+    }
     const syncActions = elements.cloudDownloadTopButton?.closest(".sync-actions");
     syncActions?.classList.toggle("is-readonly", isReadOnly);
     syncActions?.classList.toggle("has-single-cloud-action", (canUpload ? 1 : 0) + (canSync ? 1 : 0) === 1);
@@ -1691,6 +1711,62 @@
       });
       tokenClient.requestAccessToken({ prompt: "" });
     });
+  }
+
+  function consumeCloudConnectionSettings() {
+    const url = new URL(location.href);
+    const googleClientId = url.searchParams.get("mf_google_client") || "";
+    const googleFileId = url.searchParams.get("mf_google_file") || "";
+    if (!googleClientId || !googleFileId) return null;
+
+    url.searchParams.delete("mf_google_client");
+    url.searchParams.delete("mf_google_file");
+    const cleanUrl = `${url.pathname}${url.search}${url.hash}`;
+    history.replaceState({}, document.title, cleanUrl);
+    return { googleClientId, googleFileId };
+  }
+
+  function getReaderConnectionLink() {
+    const url = new URL(location.origin + location.pathname);
+    url.searchParams.set("mf_google_client", state.syncSettings.googleClientId);
+    url.searchParams.set("mf_google_file", state.syncSettings.googleFileId);
+    return url.toString();
+  }
+
+  async function onInviteReader() {
+    const email = String(elements.readerEmailInput?.value || "").trim();
+    if (!/^\S+@\S+\.\S+$/.test(email)) {
+      setSyncStatus("Укажите корректный Google e-mail читателя.");
+      elements.readerEmailInput?.focus();
+      return;
+    }
+    if (!state.syncSettings.googleFileId || state.syncSettings.accessMode !== "writer") {
+      setSyncStatus("Открыть доступ может только ведущее устройство после первой выгрузки.");
+      return;
+    }
+
+    setSyncStatus("Выдаю читателю доступ к файлу Google Drive...");
+    try {
+      const accessToken = await getGoogleAccessToken("https://www.googleapis.com/auth/drive.file");
+      const connectionLink = getReaderConnectionLink();
+      const emailMessage = `Откройте MoneyFlow по этой ссылке, чтобы подключить режим чтения: ${connectionLink}`;
+      const response = await fetch(
+        `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(state.syncSettings.googleFileId)}/permissions?sendNotificationEmail=true&emailMessage=${encodeURIComponent(emailMessage)}`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ type: "user", role: "reader", emailAddress: email }),
+        },
+      );
+      if (!response.ok) throw new Error(`Google Drive: ${response.status}`);
+      elements.readerEmailInput.value = "";
+      setSyncStatus(`Доступ на чтение и ссылка подключения отправлены: ${email}.`);
+    } catch (error) {
+      setSyncStatus(`Не удалось открыть доступ: ${error?.message || "неизвестная ошибка"}`);
+    }
   }
 
   function getCloudPayload() {
