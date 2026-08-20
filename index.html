@@ -117,12 +117,10 @@
               </div>
               <input type="hidden" id="operation-category" required />
               <div id="category-picker-popover" class="category-picker-popover" hidden>
-                <div id="category-picker-list" class="category-picker-list" aria-live="polite"></div>
-                <div class="category-picker-pager">
-                  <button type="button" id="category-picker-prev" class="btn btn--small">Назад</button>
-                  <span id="category-picker-page-info">Стр. 0 / 0</span>
-                  <button type="button" id="category-picker-next" class="btn btn--small">Вперёд</button>
-                </div>
+              <div id="category-picker-list" class="category-picker-list" aria-live="polite"></div>
+              <div class="category-picker-pager">
+                <button type="button" id="category-picker-load-more" class="btn btn--small">Загрузить ещё</button>
+              </div>
               </div>
               <div id="popular-categories" class="popular-categories" aria-label="Частые категории" hidden></div>
             </div>
@@ -183,9 +181,7 @@
           <div id="operations-list" class="operations-list" aria-live="polite"></div>
 
           <div class="pagination">
-            <button id="prev-page" class="btn">Назад</button>
-            <span id="page-info">Стр. 0 / 0</span>
-            <button id="next-page" class="btn">Вперёд</button>
+            <button id="load-more-operations" class="btn">Загрузить ещё</button>
           </div>
         </section>
       </main>

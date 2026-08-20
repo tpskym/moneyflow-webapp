@@ -22,9 +22,7 @@
     categoryPickerToggle: document.getElementById("category-picker-toggle"),
     categoryPickerPopover: document.getElementById("category-picker-popover"),
     categoryPickerList: document.getElementById("category-picker-list"),
-    categoryPickerPrevBtn: document.getElementById("category-picker-prev"),
-    categoryPickerNextBtn: document.getElementById("category-picker-next"),
-    categoryPickerPageInfo: document.getElementById("category-picker-page-info"),
+    categoryPickerLoadMoreBtn: document.getElementById("category-picker-load-more"),
     amountInput: document.getElementById("operation-amount"),
     amountDisplay: document.getElementById("operation-amount-display"),
     amountKeypad: document.getElementById("amount-keypad"),
@@ -40,9 +38,7 @@
     operationsList: document.getElementById("operations-list"),
     chipContainer: document.querySelector(".chips"),
     balanceTitle: document.getElementById("balance-title"),
-    prevPageBtn: document.getElementById("prev-page"),
-    nextPageBtn: document.getElementById("next-page"),
-    pageInfo: document.getElementById("page-info"),
+    loadMoreOperationsButton: document.getElementById("load-more-operations"),
     yearFilterContainer: document.getElementById("year-filters"),
     syncToggleButton: document.getElementById("sync-settings-toggle"),
     syncSettingsCard: document.getElementById("sync-settings-section"),
@@ -143,15 +139,13 @@
     elements.categoryPickerInput.addEventListener("keydown", onCategoryInputKeydown);
     elements.categoryPickerInput.addEventListener("input", onCategoryInputChange);
     elements.categoryPickerToggle.addEventListener("click", toggleCategoryPicker);
-    elements.categoryPickerPrevBtn.addEventListener("click", () => goCategoryPage(-1));
-    elements.categoryPickerNextBtn.addEventListener("click", () => goCategoryPage(1));
+    elements.categoryPickerLoadMoreBtn.addEventListener("click", loadMoreCategories);
     elements.categoryPickerList.addEventListener("click", onCategoryPickerSelect);
     elements.popularCategories?.addEventListener("click", onPopularCategoryClick);
     elements.searchToggleButton?.addEventListener("click", onSearchToggle);
     elements.searchInput.addEventListener("input", onSearchInput);
     elements.yearFilterContainer?.addEventListener("click", onYearFilterClick);
-    elements.prevPageBtn.addEventListener("click", () => goPage(-1));
-    elements.nextPageBtn.addEventListener("click", () => goPage(1));
+    elements.loadMoreOperationsButton.addEventListener("click", loadMoreOperations);
     elements.syncSaveButton?.addEventListener("click", onSyncSave);
     elements.clearDataButton?.addEventListener("click", onClearLocalData);
     elements.syncNowTopButton?.addEventListener("click", onSyncNow);
@@ -1027,8 +1021,7 @@
     const safeTotalPages = Math.max(totalPages, 0);
     if (state.currentPage > Math.max(safeTotalPages, 1)) state.currentPage = 1;
 
-    const start = (state.currentPage - 1) * state.pageSize;
-    const pageItems = visibleOperations.slice(start, start + state.pageSize);
+    const pageItems = visibleOperations.slice(0, state.currentPage * state.pageSize);
     const filteredBalance = filtered.reduce((sum, operation) => sum + signedAmount(operation), 0);
 
     updateBalances(filteredBalance);
@@ -1247,15 +1240,8 @@
   }
 
   function updatePager(totalItems, totalPages) {
-    if (totalItems === 0) {
-      elements.pageInfo.textContent = "Стр. 0 / 0";
-      elements.prevPageBtn.disabled = true;
-      elements.nextPageBtn.disabled = true;
-      return;
-    }
-    elements.pageInfo.textContent = `Стр. ${state.currentPage} / ${totalPages}`;
-    elements.prevPageBtn.disabled = state.currentPage <= 1;
-    elements.nextPageBtn.disabled = state.currentPage >= totalPages;
+    if (!elements.loadMoreOperationsButton) return;
+    elements.loadMoreOperationsButton.hidden = totalItems === 0 || state.currentPage >= totalPages;
   }
 
   function renderOperationsList(operations) {
@@ -1596,13 +1582,13 @@
     return state.categories.find((category) => category.id === categoryId) || null;
   }
 
-  function goPage(delta) {
+  function loadMoreOperations() {
     const yearFiltered = getOperationsByYear(enrichOperationsWithBalance(state.operations));
     const visible = getFilteredOperations(yearFiltered);
     const totalPages = Math.ceil(visible.length / state.pageSize) || 0;
-    if (totalPages <= 1) return;
+    if (state.currentPage >= totalPages) return;
 
-    state.currentPage = Math.min(Math.max(1, state.currentPage + delta), totalPages);
+    state.currentPage += 1;
     render();
   }
 
@@ -1690,11 +1676,11 @@
     }
   }
 
-  function goCategoryPage(delta) {
-    const totalPages = getCategoryPickerTotalPages();
-    if (totalPages <= 1) return;
+  function loadMoreCategories() {
+    const totalPages = Math.ceil(getCategoryPickerSlice().totalItems / CATEGORY_PAGE_SIZE) || 0;
+    if (state.categoryCurrentPage >= totalPages) return;
 
-    state.categoryCurrentPage = Math.min(Math.max(1, state.categoryCurrentPage + delta), totalPages);
+    state.categoryCurrentPage += 1;
     renderCategoryOptions();
   }
 
@@ -1707,28 +1693,16 @@
     if (state.categoryCurrentPage > Math.max(totalPages, 1)) {
       state.categoryCurrentPage = 1;
     }
-    const start = (state.categoryCurrentPage - 1) * CATEGORY_PAGE_SIZE;
     return {
       totalItems,
       totalPages,
-      pageItems: filtered.slice(start, start + CATEGORY_PAGE_SIZE),
+      pageItems: filtered.slice(0, state.categoryCurrentPage * CATEGORY_PAGE_SIZE),
     };
   }
 
-  function getCategoryPickerTotalPages() {
-    return Math.max(Math.ceil(getCategoryPickerSlice().totalItems / CATEGORY_PAGE_SIZE), 0);
-  }
-
   function updateCategoryPickerPager(totalItems, totalPages) {
-    if (totalItems === 0) {
-      elements.categoryPickerPageInfo.textContent = "Стр. 0 / 0";
-      elements.categoryPickerPrevBtn.disabled = true;
-      elements.categoryPickerNextBtn.disabled = true;
-      return;
-    }
-    elements.categoryPickerPageInfo.textContent = `Стр. ${state.categoryCurrentPage} / ${totalPages}`;
-    elements.categoryPickerPrevBtn.disabled = state.categoryCurrentPage <= 1;
-    elements.categoryPickerNextBtn.disabled = state.categoryCurrentPage >= totalPages;
+    if (!elements.categoryPickerLoadMoreBtn) return;
+    elements.categoryPickerLoadMoreBtn.hidden = totalItems === 0 || state.categoryCurrentPage >= totalPages;
   }
 
   function setCategorySelection(categoryId) {
