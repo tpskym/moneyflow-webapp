@@ -658,7 +658,25 @@ textarea:focus-visible {
 }
 
 .sync-card .field + .sync-buttons {
-  margin-top: 12px;
+  margin-top: 18px;
+}
+
+.sync-card h2 {
+  margin-bottom: 18px;
+}
+
+.sync-card .field {
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.sync-card .sync-buttons {
+  gap: 12px;
+}
+
+.sync-card .muted {
+  margin-top: 18px;
+  line-height: 1.45;
 }
 
 .muted {
