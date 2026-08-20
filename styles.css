@@ -1410,21 +1410,6 @@ body.amounts-hidden #category-charts {
 }
 
 @media (max-width: 430px) {
-  .reader-connection-refresh {
-    flex-basis: 54px;
-    width: 54px;
-    min-width: 54px;
-    height: 52px;
-    color: #f8fafc;
-    border-color: rgba(103, 232, 249, 0.7);
-  }
-
-  .reader-connection-refresh svg {
-    width: 28px;
-    height: 28px;
-    stroke-width: 2.4;
-  }
-
   .reader-connection > .btn {
     width: 100%;
   }
