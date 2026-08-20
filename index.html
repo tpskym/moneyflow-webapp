@@ -13,14 +13,14 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icons/moneyflow.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="icons/moneyflow.svg" />
-    <link rel="stylesheet" href="styles.css?v=114" />
+    <link rel="stylesheet" href="styles.css?v=115" />
   </head>
   <body>
     <div class="page">
       <header class="header">
         <div class="header-heading">
           <p class="eyebrow">Личный счёт</p>
-          <div class="brand-title-row"><h1>M-Flow</h1><span class="app-version">v114</span></div>
+          <div class="brand-title-row"><h1>M-Flow</h1><span class="app-version">v115</span></div>
           <p class="subtitle"><span class="subtitle-label">Учет доходов и расходов</span></p>
         </div>
         <div class="header-tools">
@@ -86,6 +86,11 @@
             <li>Скопируйте Client ID в настройки приложения и нажмите «Сохранить настройки». Затем нажмите «Выгрузить»: при первом запуске она создаст JSON-файл в Google Drive и полностью запишет в него текущие данные этого устройства.</li>
             <li>После первой выгрузки введите Gmail читателя и нажмите «Открыть доступ читателю». После выгрузки отправьте ему показанную ссылку лично: она содержит ключ расшифровки.</li>
           </ol>
+          <section class="pwa-install-help" aria-labelledby="pwa-install-title">
+            <h3 id="pwa-install-title">Установить как приложение</h3>
+            <p><strong>Android:</strong> откройте сайт в Chrome, нажмите меню <strong>⋮</strong> и выберите «Установить приложение» или «Добавить на главный экран».</p>
+            <p><strong>iPhone и iPad:</strong> откройте сайт в Safari, нажмите «Поделиться», затем «На экран «Домой»» и «Добавить».</p>
+          </section>
           <button id="instructions-close" type="button" class="btn btn--secondary">Закрыть инструкцию</button>
         </section>
 
@@ -320,6 +325,6 @@
     <div id="app-notice" class="app-notice" role="status" aria-live="polite" hidden></div>
 
     <script src="https://accounts.google.com/gsi/client" async></script>
-    <script src="app.js?v=114" defer></script>
+    <script src="app.js?v=115" defer></script>
   </body>
 </html>
