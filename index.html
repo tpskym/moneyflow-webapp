@@ -13,14 +13,14 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icons/moneyflow.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="icons/moneyflow.svg" />
-    <link rel="stylesheet" href="styles.css?v=106" />
+    <link rel="stylesheet" href="styles.css?v=107" />
   </head>
   <body>
     <div class="page">
       <header class="header">
         <div class="header-heading">
           <p class="eyebrow">Личный счёт</p>
-          <div class="brand-title-row"><h1>M-Flow</h1><span class="app-version">v106</span></div>
+          <div class="brand-title-row"><h1>M-Flow</h1><span class="app-version">v107</span></div>
           <p class="subtitle"><span class="subtitle-label">Учет доходов и расходов</span></p>
         </div>
         <div class="header-tools">
@@ -109,9 +109,9 @@
             <input id="google-file-id" type="hidden" />
             <div class="sync-buttons">
               <button id="cloud-save" type="button" class="btn btn--secondary">Сохранить настройки</button>
-              <button id="cloud-upload" type="button" class="btn">Выгрузить в облако</button>
               <button id="cloud-download" type="button" class="btn btn--secondary">Загрузить из облака</button>
             </div>
+            <p class="cloud-action-hint">Полезно при смене устройства редактора: загрузка полностью заменит локальные операции и категории данными из облака.</p>
             <div id="reader-invite" class="reader-invite" hidden>
               <label class="field">
                 Gmail-адрес читателя
@@ -156,9 +156,14 @@
               <button id="reader-link-apply" type="button" class="btn btn--secondary">Подключиться по ссылке</button>
             </div>
           </section>
+          <section class="external-data-section">
+            <p class="external-data-title">Импорт и экспорт внешних систем</p>
+            <div class="sync-buttons">
+              <button id="file-export" type="button" class="btn btn--secondary">Выгрузить в файл</button>
+              <button id="file-import" type="button" class="btn btn--secondary">Загрузить из файла</button>
+            </div>
+          </section>
           <div class="sync-buttons sync-buttons--shared">
-            <button id="file-export" type="button" class="btn btn--secondary">Выгрузить в файл</button>
-            <button id="file-import" type="button" class="btn btn--secondary">Загрузить из файла</button>
             <button id="cloud-clear-data" type="button" class="btn btn--danger">Очистить локальные данные</button>
           </div>
           <input id="file-import-input" type="file" accept=".csv,text/csv" hidden />
@@ -316,6 +321,6 @@
     <div id="app-notice" class="app-notice" role="status" aria-live="polite" hidden></div>
 
     <script src="https://accounts.google.com/gsi/client" async></script>
-    <script src="app.js?v=106" defer></script>
+    <script src="app.js?v=107" defer></script>
   </body>
 </html>

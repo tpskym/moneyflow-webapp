@@ -1383,6 +1383,28 @@ body.amounts-hidden #category-charts {
   stroke-linejoin: round;
 }
 
+.cloud-action-hint {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.external-data-section {
+  margin-top: 22px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.external-data-title {
+  margin: 0 0 10px;
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 @media (max-width: 430px) {
   .reader-connection > .btn {
     width: 100%;
