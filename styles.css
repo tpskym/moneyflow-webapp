@@ -1355,25 +1355,28 @@ body.amounts-hidden #category-charts {
   display: flex;
   align-items: stretch;
   gap: 8px;
+  width: 100%;
 }
 
 .reader-link-row input {
+  flex: 1 1 0;
+  width: 0;
   min-width: 0;
 }
 
-.reader-link-row .btn {
-  flex: 0 0 auto;
-}
-
 .reader-connection-refresh {
-  width: 50px;
-  min-width: 50px;
+  flex: 0 0 48px;
+  width: 48px;
+  min-width: 48px;
+  height: 48px;
   padding: 0;
   display: grid;
   place-items: center;
+  overflow: visible;
 }
 
 .reader-connection-refresh svg {
+  display: block;
   width: 22px;
   height: 22px;
   fill: none;
