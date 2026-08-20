@@ -50,6 +50,7 @@
     quickAddCard: document.getElementById("quick-add-card"),
     quickAddTitle: document.getElementById("quick-add-title"),
     operationSubmitButton: document.getElementById("operation-submit"),
+    quickAddDismissButton: document.getElementById("quick-add-dismiss"),
   };
 
   const state = {
@@ -123,6 +124,7 @@
 
   function bindEvents() {
     elements.form.addEventListener("submit", onAddOperation);
+    elements.quickAddDismissButton?.addEventListener("click", onQuickAddDismiss);
     if (elements.typeToggle) {
       elements.typeToggle.addEventListener("click", onTypeToggleClick);
     }
@@ -373,6 +375,14 @@
     elements.searchInput.focus();
   }
 
+  function onQuickAddDismiss() {
+    closeCategoryPicker();
+    resetQuickAddFormToDefaults();
+    setQuickAddDate(getTodayInputDate());
+    syncApplyTypeFromState();
+    updateQuickAddVisibility(false);
+  }
+
   function onCategoryInputKeydown(event) {
     if (elements.form && elements.form.classList.contains("is-readonly")) {
       return;
@@ -536,7 +546,11 @@
 
     if (elements.operationSubmitButton) {
       elements.operationSubmitButton.hidden = isViewMode;
-      elements.operationSubmitButton.textContent = normalizedMode === "edit" ? "Сохранить изменения" : "Добавить операцию";
+      elements.operationSubmitButton.textContent = normalizedMode === "edit" ? "Сохранить изменения" : "Добавить";
+    }
+
+    if (elements.quickAddDismissButton) {
+      elements.quickAddDismissButton.textContent = isViewMode ? "Закрыть" : "Отменить";
     }
 
     const readOnlyInputs = [
