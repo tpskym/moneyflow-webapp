@@ -5,15 +5,7 @@
     syncSettings: "moneyflow-sync-settings-v1",
   };
 
-  const DEFAULT_CATEGORIES = [
-    { id: "salary", name: "Зарплата", mode: "both", color: "#22c55e" },
-    { id: "bonus", name: "Доп. доход", mode: "both", color: "#16a34a" },
-    { id: "food", name: "Продукты", mode: "both", color: "#ef4444" },
-    { id: "housing", name: "Коммунальные", mode: "both", color: "#f97316" },
-    { id: "transport", name: "Транспорт", mode: "both", color: "#8b5cf6" },
-    { id: "health", name: "Здоровье", mode: "both", color: "#06b6d4" },
-    { id: "other", name: "Другое", mode: "both", color: "#64748b" },
-  ];
+  const DEFAULT_CATEGORIES = [];
 
   const CATEGORY_PAGE_SIZE = 20;
   const CATEGORY_SEARCH_SIMILARITY_THRESHOLD = 0.48;
@@ -586,6 +578,7 @@
     const rawAmount = elements.amountInput.value.trim();
     const amount = Number(rawAmount);
     if (!Number.isFinite(amount) || amount <= 0) {
+      elements.amountInput.focus();
       return null;
     }
 
@@ -593,7 +586,17 @@
     const selectedCategory = ensureCategorySelection();
     const description = elements.descriptionInput.value.trim();
     if (!selectedCategory) return null;
-    const operationDate = parseOperationDate(elements.operationDateInput?.value);
+    const rawOperationDate = String(elements.operationDateInput?.value || "").trim();
+    if (!/^\d{2}\.\d{2}\.\d{4}$/.test(rawOperationDate)) {
+      elements.operationDateInput?.focus();
+      return null;
+    }
+
+    const operationDate = parseDateFromInput(rawOperationDate);
+    if (Number.isNaN(operationDate.getTime()) || normalizeDateForInput(operationDate) !== rawOperationDate) {
+      elements.operationDateInput?.focus();
+      return null;
+    }
     const operationDateValue = dateToDateOnlyString(operationDate);
 
     return {
