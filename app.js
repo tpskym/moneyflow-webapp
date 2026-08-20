@@ -249,7 +249,7 @@
 
   function onQuickAddToggle() {
     const shouldOpen = Boolean(elements.quickAddCard?.hidden);
-    if (shouldOpen) updateSyncSettingsVisibility(false);
+    updateSyncSettingsVisibility(false);
     updateQuickAddVisibility(shouldOpen);
     if (shouldOpen) {
       setQuickAddMode("add");
