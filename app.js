@@ -1437,13 +1437,12 @@
     return operations
       .filter((operation) => operation && typeof operation === "object")
       .map((operation) => {
-        const { balanceAfter: _balanceAfter, categoryName: _categoryName, ...storedOperation } = operation;
         const sourceType = String(operation.type || "").toLowerCase();
         const normalizedType =
           sourceType === "expense" ? "expense" : sourceType === "income" ? "income" : "";
 
         return {
-          ...storedOperation,
+          ...operation,
           operationDate: parseDateToDateOnlyString(operation.operationDate || operation.date || operation.createdAt),
           id: String(operation.id || "").trim() || getUuid(),
           createdAt: String(operation.createdAt || "").trim(),
