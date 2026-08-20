@@ -136,7 +136,7 @@
         </section>
 
         <section class="card">
-          <div class="search">
+          <div class="search" id="search-section">
             <button id="search-toggle" type="button" class="btn btn--secondary search-toggle" aria-expanded="false" aria-label="Открыть поиск" title="Открыть поиск">
               <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                 <circle cx="10.5" cy="10.5" r="5.5"></circle>
@@ -149,6 +149,8 @@
                 Поиск
                 <input id="search-input" type="search" inputmode="search" placeholder="По описанию, категории или сумме" />
               </label>
+            </div>
+            <div id="search-filters" class="search-filters" hidden>
               <div id="year-filters" class="year-filters" role="tablist" aria-label="Фильтр по году"></div>
 
               <div class="chips" role="tablist" aria-label="Фильтр по типу">

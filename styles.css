@@ -375,13 +375,16 @@ textarea:focus-visible {
 }
 
 .search {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 46px;
+  gap: 10px;
+  align-items: end;
   margin-bottom: 12px;
 }
 
 .search-toggle {
-  align-self: flex-end;
+  grid-column: 2;
+  grid-row: 1;
   width: 46px;
   min-width: 46px;
   padding: 0;
@@ -401,7 +404,13 @@ textarea:focus-visible {
 }
 
 .search-field {
-  margin-top: 10px;
+  grid-column: 1;
+  grid-row: 1;
+  min-width: 0;
+}
+
+.search-filters {
+  grid-column: 1 / -1;
 }
 
 .field-search {

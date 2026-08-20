@@ -29,8 +29,10 @@
     descriptionInput: document.getElementById("operation-description"),
     operationDateInput: document.getElementById("operation-date"),
     balanceCurrent: document.getElementById("balance-current"),
+    searchSection: document.getElementById("search-section"),
     searchToggleButton: document.getElementById("search-toggle"),
     searchField: document.getElementById("search-field"),
+    searchFilters: document.getElementById("search-filters"),
     searchInput: document.getElementById("search-input"),
     operationsList: document.getElementById("operations-list"),
     chipContainer: document.querySelector(".chips"),
@@ -1173,6 +1175,10 @@
     if (!elements.searchField || !elements.searchToggleButton) return;
 
     elements.searchField.hidden = !open;
+    if (elements.searchFilters) {
+      elements.searchFilters.hidden = !open;
+    }
+    elements.searchSection?.classList.toggle("is-open", open);
     elements.searchToggleButton.setAttribute("aria-expanded", String(open));
     elements.searchToggleButton.classList.toggle("is-open", open);
     const label = open ? "Скрыть поиск" : "Открыть поиск";
