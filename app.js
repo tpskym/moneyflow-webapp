@@ -1655,6 +1655,7 @@
     state.categorySearchText = "";
     state.categoryCurrentPage = 1;
     renderCategoryOptions();
+    elements.categoryPickerInput.focus({ preventScroll: true });
   }
 
   function onPopularCategoryClick(event) {
