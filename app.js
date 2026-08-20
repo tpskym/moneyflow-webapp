@@ -96,6 +96,7 @@
     readerInviteStatus: document.getElementById("reader-invite-status"),
     readerConnection: document.getElementById("reader-connection"),
     readerConnectionLink: document.getElementById("reader-connection-link"),
+    readerConnectionRefreshButton: document.getElementById("reader-connection-refresh"),
     readerConnectionShareButton: document.getElementById("reader-connection-share"),
     readerConnectionStatus: document.getElementById("reader-connection-status"),
     readerAccessManagement: document.getElementById("reader-access-management"),
@@ -269,6 +270,7 @@
     elements.cloudDownloadButton?.addEventListener("click", onCloudDownload);
     elements.readerCloudDownloadButton?.addEventListener("click", onReaderCloudDownload);
     elements.readerInviteButton?.addEventListener("click", onInviteReader);
+    elements.readerConnectionRefreshButton?.addEventListener("click", onRefreshReaderConnectionLink);
     elements.readerConnectionShareButton?.addEventListener("click", onShareReaderConnection);
     elements.readerAccessRefreshButton?.addEventListener("click", loadReaderPermissions);
     elements.readerAccessList?.addEventListener("click", onReaderAccessListClick);
@@ -2368,6 +2370,30 @@
     url.hash = `mf_key=${encodeURIComponent(state.cloudEncryptionKey)}`;
     return url.toString();
   }
+
+  function onRefreshReaderConnectionLink() {
+    refreshReaderConnectionLink();
+  }
+
+  function refreshReaderConnectionLink({ notify = true } = {}) {
+    if (state.syncSettings.accessMode !== "writer" || !state.syncSettings.googleFileId) {
+      if (notify) setSyncStatus("Ссылка доступна на устройстве редактора после первой выгрузки.");
+      return false;
+    }
+    const link = getReaderConnectionLink();
+    if (!link) {
+      if (notify) setSyncStatus("Сначала укажите пароль-фразу и выгрузите зашифрованный файл.");
+      return false;
+    }
+    if (elements.readerConnectionLink) elements.readerConnectionLink.value = link;
+    if (elements.readerConnection) elements.readerConnection.hidden = false;
+    if (notify) {
+      setSyncStatus("Ссылка подключения обновлена.");
+      showAppNotice("Ссылка подключения обновлена.");
+    }
+    return true;
+  }
+
   async function onInviteReader() {
     const email = String(elements.readerEmailInput?.value || "").trim();
     if (!/^\S+@\S+\.\S+$/.test(email)) {
@@ -2804,6 +2830,7 @@
       state.syncSettings.lastSuccessfulSyncAt = new Date().toISOString();
       await persistSyncSettings();
       renderLastSuccessfulSync();
+      refreshReaderConnectionLink({ notify: false });
       setSyncStatus("Данные из облака загружены. Локальные операции и категории заменены.");
       showAppNotice(state.syncSettings.accessMode === "reader"
         ? "Данные синхронизированы."

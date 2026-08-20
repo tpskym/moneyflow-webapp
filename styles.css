@@ -1350,3 +1350,17 @@ body.amounts-hidden #charts-toggle,
 body.amounts-hidden #category-charts {
   display: none !important;
 }
+
+.reader-link-row {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.reader-link-row input {
+  min-width: 0;
+}
+
+.reader-link-row .btn {
+  flex: 0 0 auto;
+}
