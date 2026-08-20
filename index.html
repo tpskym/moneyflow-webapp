@@ -92,7 +92,7 @@
             </label>
             <div class="field field-wide">
               <span>Сумма</span>
-              <input id="operation-amount" type="number" min="0.01" step="0.01" placeholder="0.00" required />
+              <input id="operation-amount" type="text" inputmode="decimal" placeholder="0.00" required />
               <div id="amount-keypad" class="amount-keypad" aria-label="Цифровая клавиатура суммы">
                 <button type="button" class="btn" data-amount-key="1">1</button>
                 <button type="button" class="btn" data-amount-key="2">2</button>
@@ -103,7 +103,7 @@
                 <button type="button" class="btn" data-amount-key="7">7</button>
                 <button type="button" class="btn" data-amount-key="8">8</button>
                 <button type="button" class="btn" data-amount-key="9">9</button>
-                <button type="button" class="btn btn--secondary" data-amount-action="clear">C</button>
+                <button type="button" class="btn" data-amount-key=".">,</button>
                 <button type="button" class="btn" data-amount-key="0">0</button>
                 <button type="button" class="btn btn--secondary" data-amount-action="backspace">Del</button>
               </div>

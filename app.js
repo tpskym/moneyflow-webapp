@@ -332,9 +332,17 @@
       return;
     }
 
-    const digit = button.dataset.amountKey;
-    if (!digit || !/^\d$/.test(digit)) return;
-    elements.amountInput.value = `${currentValue}${digit}`;
+    const key = button.dataset.amountKey;
+    if (!key || !/^\d$|^\.$/.test(key)) return;
+    if (key === ".") {
+      if (currentValue.includes(".")) return;
+      elements.amountInput.value = currentValue ? `${currentValue}.` : "0.";
+      return;
+    }
+
+    const decimalPart = currentValue.split(".")[1] || "";
+    if (currentValue.includes(".") && decimalPart.length >= 2) return;
+    elements.amountInput.value = `${currentValue}${key}`;
   }
 
   function onCategoryInputChange(event) {
@@ -666,7 +674,7 @@
   }
 
   function getOperationFromForm() {
-    const rawAmount = elements.amountInput.value.trim();
+    const rawAmount = elements.amountInput.value.trim().replace(",", ".");
     const amount = Number(rawAmount);
     if (!Number.isFinite(amount) || amount <= 0) {
       elements.amountInput.focus();
