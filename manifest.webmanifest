@@ -4,12 +4,12 @@
   "description": "Личный учет доходов и расходов",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#020617",
+  "background_color": "transparent",
   "theme_color": "#020617",
   "scope": "./",
   "icons": [
     {
-      "src": "icons/moneyflow.svg?v=119",
+      "src": "icons/moneyflow.svg?v=120",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"
