@@ -1848,7 +1848,7 @@
     try {
       const accessToken = await getGoogleAccessToken("https://www.googleapis.com/auth/drive.file");
       const response = await fetch(
-        `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(state.syncSettings.googleFileId)}/permissions?sendNotificationEmail=false`,
+        `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(state.syncSettings.googleFileId)}/permissions?sendNotificationEmail=false&supportsAllDrives=true`,
         {
           method: "POST",
           headers: {
@@ -1859,6 +1859,16 @@
         },
       );
       if (!response.ok) throw new Error(`Google Drive: ${response.status}`);
+      const createdPermission = await response.json();
+      if (createdPermission?.id && createdPermission?.emailAddress) {
+        state.readerPermissions = state.readerPermissions.filter((item) => item.email.toLowerCase() !== String(createdPermission.emailAddress).toLowerCase());
+        state.readerPermissions.push({
+          id: String(createdPermission.id),
+          email: String(createdPermission.emailAddress),
+          displayName: String(createdPermission.displayName || ""),
+        });
+        renderReaderPermissions();
+      }
       elements.readerEmailInput.value = "";
       setSyncStatus(`Доступ на чтение выдан: ${email}.`);
       setReaderInviteStatus(`Доступ выдан для ${email}. Отправьте ему ссылку подключения ниже.`, "success");
@@ -1942,7 +1952,7 @@
     try {
       const accessToken = await getGoogleAccessToken("https://www.googleapis.com/auth/drive.file");
       const response = await fetch(
-        `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(state.syncSettings.googleFileId)}/permissions?fields=permissions(id,emailAddress,displayName,role,type,deleted)`,
+        `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(state.syncSettings.googleFileId)}/permissions?fields=permissions(id,emailAddress,displayName,role,type,deleted)&pageSize=100&supportsAllDrives=true`,
         { headers: { Authorization: `Bearer ${accessToken}` } },
       );
       if (!response.ok) throw new Error(`Google Drive: ${response.status}`);
