@@ -62,6 +62,7 @@
     instructionsCloseButton: document.getElementById("instructions-close"),
     syncGoogleClientIdInput: document.getElementById("google-client-id"),
     syncGoogleFileIdInput: document.getElementById("google-file-id"),
+    syncTabs: document.getElementById("sync-tabs"),
     syncEditorTabButton: document.getElementById("sync-tab-editor"),
     syncReaderTabButton: document.getElementById("sync-tab-reader"),
     syncEditorPanel: document.getElementById("sync-editor-panel"),
@@ -1362,6 +1363,7 @@
 
     if (elements.syncEditorTabButton) elements.syncEditorTabButton.hidden = isReadOnly;
     if (elements.syncReaderTabButton) elements.syncReaderTabButton.hidden = isWriter;
+    if (elements.syncTabs) elements.syncTabs.hidden = isReadOnly || isWriter;
     if (isReadOnly) activeSyncTab = "reader";
     if (isWriter) activeSyncTab = "editor";
     renderSyncTabs();

@@ -678,6 +678,10 @@ textarea:focus-visible {
   margin-bottom: 18px;
 }
 
+.sync-tabs[hidden] {
+  display: none;
+}
+
 .sync-tab {
   min-height: 48px;
   border: 1px solid var(--line);
