@@ -42,6 +42,7 @@
     descriptionInput: document.getElementById("operation-description"),
     operationDateInput: document.getElementById("operation-date"),
     balanceCurrent: document.getElementById("balance-current"),
+    lastSuccessfulSync: document.getElementById("last-successful-sync"),
     searchSection: document.getElementById("search-section"),
     searchToggleButton: document.getElementById("search-toggle"),
     searchField: document.getElementById("search-field"),
@@ -81,6 +82,7 @@
       googleClientId: "",
       googleFileId: "",
       accessMode: "writer",
+      lastSuccessfulSyncAt: "",
     },
     searchText: "",
     activeTypeFilter: "all",
@@ -110,6 +112,7 @@
 
     renderSyncSettingsForm();
     updateCloudAccessUI();
+    renderLastSuccessfulSync();
     syncApplyTypeFromState();
     updateSyncSettingsVisibility(false);
     updateInstructionsVisibility(false);
@@ -327,6 +330,7 @@
 
     state.operations = [];
     state.categories = [];
+    state.syncSettings.lastSuccessfulSyncAt = "";
     state.searchText = "";
     state.activeTypeFilter = "all";
     state.activeCategoryFilter = new Set();
@@ -358,6 +362,7 @@
     renderCategoryOptions();
     setSyncStatus("Локальные операции и категории очищены.");
     updateSyncSettingsVisibility(false);
+    renderLastSuccessfulSync();
   }
 
   async function onCloudUpload() {
@@ -1478,6 +1483,7 @@
       accessMode: settings && ["writer", "reader", "unknown"].includes(settings.accessMode)
         ? settings.accessMode
         : "writer",
+      lastSuccessfulSyncAt: String((settings && settings.lastSuccessfulSyncAt) || "").trim(),
     };
   }
 
@@ -1627,6 +1633,23 @@
     elements.syncStatus.textContent = message || "";
   }
 
+  function renderLastSuccessfulSync() {
+    if (!elements.lastSuccessfulSync) return;
+    const timestamp = Date.parse(state.syncSettings.lastSuccessfulSyncAt || "");
+    if (!Number.isFinite(timestamp)) {
+      elements.lastSuccessfulSync.textContent = "Еще не было";
+      return;
+    }
+    elements.lastSuccessfulSync.textContent = new Date(timestamp).toLocaleString("ru-RU", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+  }
+
   function getMissingSyncSettings({ needsFileId = false } = {}) {
     const missing = [];
     if (!state.syncSettings.googleClientId) {
@@ -1694,10 +1717,12 @@
       if (!state.syncSettings.googleFileId && metadata?.id) {
         state.syncSettings.googleFileId = metadata.id;
         state.syncSettings.accessMode = "writer";
-        await persistSyncSettings();
-        renderSyncSettingsForm();
-        updateCloudAccessUI();
       }
+      state.syncSettings.lastSuccessfulSyncAt = new Date().toISOString();
+      await persistSyncSettings();
+      renderSyncSettingsForm();
+      updateCloudAccessUI();
+      renderLastSuccessfulSync();
       setSyncStatus("Полный файл успешно выгружен в Google Drive.");
     } catch (error) {
       setSyncStatus(`Выгрузка неуспешна: ${error?.message || "неизвестная ошибка"}`);
@@ -1732,6 +1757,9 @@
       writeJson(STORAGE_KEYS.categories, state.categories);
       renderCategoryOptions();
       render();
+      state.syncSettings.lastSuccessfulSyncAt = new Date().toISOString();
+      await persistSyncSettings();
+      renderLastSuccessfulSync();
       setSyncStatus("Данные полностью загружены из Google Drive.");
     } catch (error) {
       setSyncStatus(`Загрузка неуспешна: ${error?.message || "неизвестная ошибка"}`);
