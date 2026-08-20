@@ -1,6 +1,6 @@
 {
-  "name": "MoneyFlow",
-  "short_name": "MoneyFlow",
+  "name": "M-Flow",
+  "short_name": "M-Flow",
   "description": "Личный учет доходов и расходов",
   "start_url": "./",
   "display": "standalone",

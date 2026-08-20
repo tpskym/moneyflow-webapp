@@ -173,6 +173,17 @@ h1 {
   font-size: 12px;
 }
 
+.brand-title-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.brand-title-row h1 {
+  min-width: 0;
+}
+
 .subtitle {
   margin: 4px 0 0;
   color: var(--muted);
