@@ -249,6 +249,12 @@ h1 {
   color: var(--text);
 }
 
+.field-hint {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
 .field-wide,
 .btn--primary {
   grid-column: auto;
