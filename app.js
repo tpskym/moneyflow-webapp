@@ -527,6 +527,7 @@
     await persistSyncSettings();
     updateCloudAccessUI();
     setSyncStatus(passphraseChanged ? "Пароль-фраза сохранена. Выгрузите данные и отправьте читателям новую ссылку." : "Настройки сохранены.");
+    showAppNotice(passphraseChanged ? "Пароль-фраза сохранена." : "Настройки синхронизации сохранены.");
     if (close) {
       updateSyncSettingsVisibility(false);
     }
