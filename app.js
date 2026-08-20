@@ -290,6 +290,10 @@
     const trimmedValue = value.trim();
 
     if (!trimmedValue) {
+      if (categoryPickerDebounce) {
+        clearTimeout(categoryPickerDebounce);
+        categoryPickerDebounce = undefined;
+      }
       elements.categorySelect.value = "";
       state.categorySearchText = "";
       state.categoryCurrentPage = 1;
@@ -305,8 +309,13 @@
     if (categoryPickerDebounce) {
       clearTimeout(categoryPickerDebounce);
     }
+    const scheduledSearchValue = trimmedValue;
     categoryPickerDebounce = setTimeout(() => {
-      state.categorySearchText = trimmedValue;
+      const currentSearchValue = (elements.categoryPickerInput?.value || "").trim();
+      if (normalizeTextForSearch(currentSearchValue) !== normalizeTextForSearch(scheduledSearchValue)) {
+        return;
+      }
+      state.categorySearchText = scheduledSearchValue;
       state.categoryCurrentPage = 1;
       renderCategoryOptions();
     }, 220);
