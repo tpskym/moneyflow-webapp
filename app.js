@@ -88,6 +88,7 @@
     readerAccessList: document.getElementById("reader-access-list"),
     readerAccessStatus: document.getElementById("reader-access-status"),
     syncStatus: document.getElementById("cloud-status"),
+    appNotice: document.getElementById("app-notice"),
     clearDataButton: document.getElementById("cloud-clear-data"),
     quickAddToggleButton: document.getElementById("quick-add-toggle"),
     quickAddCard: document.getElementById("quick-add-card"),
@@ -126,6 +127,7 @@
   let operationLongPressTimer;
   let longPressHandledOperationId = null;
   let activeSyncTab = "editor";
+  let appNoticeTimer;
 
   async function main() {
     enableLiveReload();
@@ -1763,6 +1765,18 @@
     elements.syncStatus.textContent = message || "";
   }
 
+  function showAppNotice(message, tone = "success") {
+    if (!elements.appNotice) return;
+    if (appNoticeTimer) clearTimeout(appNoticeTimer);
+    elements.appNotice.textContent = message;
+    elements.appNotice.dataset.tone = tone;
+    elements.appNotice.hidden = false;
+    appNoticeTimer = setTimeout(() => {
+      elements.appNotice.hidden = true;
+      delete elements.appNotice.dataset.tone;
+    }, 4500);
+  }
+
   function renderLastSuccessfulSync() {
     if (!elements.lastSuccessfulSync) return;
     const timestamp = Date.parse(state.syncSettings.lastSuccessfulSyncAt || "");
@@ -2124,8 +2138,11 @@
       updateCloudAccessUI();
       renderLastSuccessfulSync();
       setSyncStatus("Полный файл успешно выгружен в Google Drive.");
+      showAppNotice("Данные успешно выгружены в облако.");
     } catch (error) {
-      setSyncStatus(`Выгрузка неуспешна: ${error?.message || "неизвестная ошибка"}`);
+      const message = `Выгрузка неуспешна: ${error?.message || "неизвестная ошибка"}`;
+      setSyncStatus(message);
+      showAppNotice(message, "error");
     }
   }
 
