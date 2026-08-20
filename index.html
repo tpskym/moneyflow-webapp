@@ -13,7 +13,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icons/moneyflow.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="icons/moneyflow.svg" />
-    <link rel="stylesheet" href="styles.css?v=64" />
+    <link rel="stylesheet" href="styles.css?v=65" />
   </head>
   <body>
     <div class="page">
@@ -21,7 +21,7 @@
         <div class="header-heading">
           <p class="eyebrow">Личный счёт</p>
           <h1>MoneyFlow</h1>
-          <p class="subtitle">Учет доходов и расходов <span class="app-version">v64</span></p>
+          <p class="subtitle">Учет доходов и расходов <span class="app-version">v65</span></p>
         </div>
         <div class="header-tools">
           <button
@@ -74,7 +74,6 @@
             <li>Добавьте в Authorized JavaScript origins адрес <code>https://tpskym.github.io</code>.</li>
             <li>Скопируйте Client ID в настройки приложения и нажмите «Сохранить настройки». Затем нажмите «Выгрузить»: при первом запуске она создаст JSON-файл в Google Drive и полностью запишет в него текущие данные этого устройства.</li>
             <li>После первой выгрузки введите Google e-mail читателя в настройках и нажмите «Открыть доступ читателю». Google отправит письмо со ссылкой подключения, которую читатель откроет на своем устройстве.</li>
-            <li>Для восстановления ведущего устройства сохраните Client ID, выберите «Подключить существующий файл», вставьте ID из ссылки Google Drive и нажмите «Подключить и загрузить».</li>
           </ol>
           <button id="instructions-close" type="button" class="btn btn--secondary">Закрыть инструкцию</button>
         </section>
@@ -85,14 +84,7 @@
             OAuth Client ID
             <input id="google-client-id" type="text" autocomplete="off" placeholder="...apps.googleusercontent.com" />
           </label>
-          <div id="existing-cloud-connect" class="cloud-recovery" hidden>
-            <p>Подключите уже созданный файл, если переносите или восстанавливаете ведущее устройство.</p>
-            <label class="field">
-              ID файла Google Drive
-              <input id="google-file-id" type="text" autocomplete="off" placeholder="ID из ссылки на файл Google Drive" />
-            </label>
-            <button id="cloud-connect-existing" type="button" class="btn btn--secondary">Подключить и загрузить</button>
-          </div>
+          <input id="google-file-id" type="hidden" />
           <div class="sync-buttons">
             <button id="cloud-save" type="button" class="btn btn--secondary">Сохранить настройки</button>
             <button id="cloud-download" type="button" class="btn btn--secondary">Синхронизировать</button>
@@ -233,6 +225,6 @@
     </div>
 
     <script src="https://accounts.google.com/gsi/client" async></script>
-    <script src="app.js?v=64" defer></script>
+    <script src="app.js?v=65" defer></script>
   </body>
 </html>

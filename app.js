@@ -67,8 +67,6 @@
     cloudDownloadTopButton: document.getElementById("cloud-download-top"),
     cloudUploadButton: document.getElementById("cloud-upload"),
     cloudDownloadButton: document.getElementById("cloud-download"),
-    existingCloudConnect: document.getElementById("existing-cloud-connect"),
-    connectExistingCloudButton: document.getElementById("cloud-connect-existing"),
     readerInvite: document.getElementById("reader-invite"),
     readerEmailInput: document.getElementById("reader-email"),
     readerInviteButton: document.getElementById("reader-invite-button"),
@@ -193,7 +191,6 @@
     elements.cloudDownloadTopButton?.addEventListener("click", onCloudDownload);
     elements.cloudUploadButton?.addEventListener("click", onCloudUpload);
     elements.cloudDownloadButton?.addEventListener("click", onCloudDownload);
-    elements.connectExistingCloudButton?.addEventListener("click", onConnectExistingCloud);
     elements.readerInviteButton?.addEventListener("click", onInviteReader);
     elements.syncToggleButton?.addEventListener("click", onSyncToggle);
     elements.instructionsToggleButton?.addEventListener("click", onInstructionsToggle);
@@ -418,16 +415,6 @@
       return;
     }
     downloadFromGoogleDrive();
-  }
-
-  async function onConnectExistingCloud() {
-    const fileId = String(elements.syncGoogleFileIdInput?.value || "").trim();
-    if (!fileId) {
-      setSyncStatus("Укажите ID существующего файла Google Drive.");
-      elements.syncGoogleFileIdInput?.focus();
-      return;
-    }
-    await onCloudDownload();
   }
 
   function onAmountKeypadClick(event) {
@@ -1322,9 +1309,6 @@
     if (elements.readerInvite) {
       elements.readerInvite.hidden = !(hasClientId && hasFileId && state.syncSettings.accessMode === "writer");
     }
-    if (elements.existingCloudConnect) {
-      elements.existingCloudConnect.hidden = !(hasClientId && !hasFileId);
-    }
     const syncActions = elements.cloudDownloadTopButton?.closest(".sync-actions");
     syncActions?.classList.toggle("is-readonly", isReadOnly);
     syncActions?.classList.toggle("has-single-cloud-action", (canUpload ? 1 : 0) + (isReadOnly ? 1 : 0) === 1);
@@ -1839,6 +1823,9 @@
   }
 
   async function downloadFromGoogleDrive() {
+    if ((state.operations.length || state.categories.length) && !window.confirm("Загрузка из облака полностью заменит локальные операции и категории. Продолжить?")) {
+      return;
+    }
     setSyncStatus("Открываю вход Google и загружаю файл...");
     try {
       const accessToken = await getGoogleAccessToken("https://www.googleapis.com/auth/drive.readonly");
@@ -1869,7 +1856,7 @@
       state.syncSettings.lastSuccessfulSyncAt = new Date().toISOString();
       await persistSyncSettings();
       renderLastSuccessfulSync();
-      setSyncStatus("Данные полностью загружены из Google Drive.");
+      setSyncStatus("Данные из облака загружены. Локальные операции и категории заменены.");
     } catch (error) {
       setSyncStatus(`Загрузка неуспешна: ${error?.message || "неизвестная ошибка"}`);
     }

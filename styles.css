@@ -685,8 +685,7 @@ textarea:focus-visible {
   display: none !important;
 }
 
-.reader-invite,
-.cloud-recovery {
+.reader-invite {
   display: grid;
   gap: 12px;
   margin-top: 20px;
@@ -694,11 +693,6 @@ textarea:focus-visible {
   border-top: 1px solid var(--line);
 }
 
-.cloud-recovery p {
-  margin: 0;
-  color: var(--muted);
-  line-height: 1.4;
-}
 
 .muted {
   color: var(--muted);
