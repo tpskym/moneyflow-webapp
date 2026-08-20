@@ -231,7 +231,7 @@
     }
   }
 
-  function onSyncSave() {
+  function onSyncSave({ close = true } = {}) {
     const previousLastSyncedAt = state.syncSettings.lastSyncedAt || "";
     state.syncSettings = sanitizeSyncSettings({
       webdavPath: elements.syncWebDavPathInput?.value || "",
@@ -241,6 +241,9 @@
     });
     writeJson(STORAGE_KEYS.syncSettings, state.syncSettings);
     setSyncStatus("Настройки сохранены.");
+    if (close) {
+      updateSyncSettingsVisibility(false);
+    }
   }
 
   function onClearLocalData() {
@@ -275,10 +278,11 @@
     render();
     renderCategoryOptions();
     setSyncStatus("Локальные операции, категории и дата синхронизации очищены.");
+    updateSyncSettingsVisibility(false);
   }
 
   function onSyncNow() {
-    onSyncSave();
+    onSyncSave({ close: false });
     syncNowWithWebDav();
   }
 
