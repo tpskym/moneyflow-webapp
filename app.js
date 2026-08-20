@@ -215,7 +215,7 @@
     elements.cloudDownloadTopButton?.addEventListener("click", onCloudDownload);
     elements.cloudUploadButton?.addEventListener("click", onCloudUpload);
     elements.cloudDownloadButton?.addEventListener("click", onCloudDownload);
-    elements.readerCloudDownloadButton?.addEventListener("click", onCloudDownload);
+    elements.readerCloudDownloadButton?.addEventListener("click", onReaderCloudDownload);
     elements.readerInviteButton?.addEventListener("click", onInviteReader);
     elements.readerConnectionShareButton?.addEventListener("click", onShareReaderConnection);
     elements.readerAccessRefreshButton?.addEventListener("click", loadReaderPermissions);
@@ -439,7 +439,7 @@
     uploadToGoogleDrive();
   }
 
-  async function onCloudDownload() {
+  async function onCloudDownload({ skipReplaceConfirmation = false } = {}) {
     const saved = await onSyncSave({ close: false });
     if (!saved) {
       updateSyncSettingsVisibility(true);
@@ -452,7 +452,11 @@
       elements.syncGoogleClientIdInput?.focus();
       return;
     }
-    downloadFromGoogleDrive();
+    downloadFromGoogleDrive({ skipReplaceConfirmation });
+  }
+
+  async function onReaderCloudDownload() {
+    await onCloudDownload({ skipReplaceConfirmation: true });
   }
 
   function onAmountKeypadClick(event) {
@@ -2104,7 +2108,7 @@
     }
   }
 
-  async function downloadFromGoogleDrive() {
+  async function downloadFromGoogleDrive({ skipReplaceConfirmation = false } = {}) {
     setSyncStatus("Открываю вход Google и загружаю файл...");
     try {
       const accessToken = await getGoogleAccessToken("https://www.googleapis.com/auth/drive.readonly");
@@ -2126,13 +2130,17 @@
         renderSyncSettingsForm();
         updateCloudAccessUI();
       }
-      if ((state.operations.length || state.categories.length) && !window.confirm("Загрузка из облака полностью заменит локальные операции и категории. Продолжить?")) {
+      if (!skipReplaceConfirmation && (state.operations.length || state.categories.length) && !window.confirm("Загрузка из облака полностью заменит локальные операции и категории. Продолжить?")) {
         return;
       }
       const permissionResponse = await fetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(state.syncSettings.googleFileId)}?fields=capabilities(canEdit)`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
-      if (!permissionResponse.ok) throw new Error(`Google Drive: ${permissionResponse.status}`);
+      if (!permissionResponse.ok) {
+        throw new Error(permissionResponse.status === 404
+          ? "Нет доступа к файлу. Войдите под Gmail, которому редактор выдал доступ."
+          : `Google Drive: ${permissionResponse.status}`);
+      }
       const permissions = await permissionResponse.json();
       state.syncSettings.accessMode = permissions?.capabilities?.canEdit ? "writer" : "reader";
       await persistSyncSettings();
@@ -2140,7 +2148,11 @@
       const response = await fetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(state.syncSettings.googleFileId)}?alt=media`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
-      if (!response.ok) throw new Error(`Google Drive: ${response.status}`);
+      if (!response.ok) {
+        throw new Error(response.status === 404
+          ? "Нет доступа к данным. Войдите под Gmail, которому редактор выдал доступ."
+          : `Google Drive: ${response.status}`);
+      }
       const payload = await response.json();
       if (!Array.isArray(payload?.operations) || !Array.isArray(payload?.categories)) {
         throw new Error("Файл не похож на данные MoneyFlow");
