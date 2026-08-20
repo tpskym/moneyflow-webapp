@@ -439,7 +439,7 @@
     uploadToGoogleDrive();
   }
 
-  async function onCloudDownload({ skipReplaceConfirmation = false } = {}) {
+  async function onCloudDownload({ skipReplaceConfirmation = state.syncSettings.accessMode === "reader" } = {}) {
     const saved = await onSyncSave({ close: false });
     if (!saved) {
       updateSyncSettingsVisibility(true);
