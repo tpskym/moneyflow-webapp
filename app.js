@@ -704,6 +704,7 @@
       id: getUuid(),
       operationDate: operationDateValue,
       createdAt: "",
+      localAddedAt: new Date().toISOString(),
       type: selectedType,
       amount: round2(amount),
       categoryId: selectedCategory,
@@ -730,6 +731,7 @@
       id: getUuid(),
       operationDate: getOperationDateValue(operation),
       createdAt: "",
+      localAddedAt: new Date().toISOString(),
       type: oppositeType,
       amount: round2(Math.abs(Number(operation.amount) || 0)),
       categoryId: operation.categoryId,
@@ -990,9 +992,17 @@
   }
 
   function dateToOrderTiebreak(left, right) {
-    const leftCreated = parseDateFromValue(left?.createdAt).getTime();
-    const rightCreated = parseDateFromValue(right?.createdAt).getTime();
-    return leftCreated - rightCreated;
+    const leftCreated = getOperationOrderTimestamp(left);
+    const rightCreated = getOperationOrderTimestamp(right);
+    return leftCreated - rightCreated || String(left?.id || "").localeCompare(String(right?.id || ""));
+  }
+
+  function getOperationOrderTimestamp(operation) {
+    const syncCreatedAt = parseDateFromValue(operation?.createdAt).getTime();
+    if (Number.isFinite(syncCreatedAt)) return syncCreatedAt;
+
+    const localAddedAt = parseDateFromValue(operation?.localAddedAt).getTime();
+    return Number.isFinite(localAddedAt) ? localAddedAt : 0;
   }
 
   function formatOperationDate(operation) {
@@ -1436,6 +1446,7 @@
           operationDate: parseDateToDateOnlyString(operation.operationDate || operation.date || operation.createdAt),
           id: String(operation.id || "").trim() || getUuid(),
           createdAt: String(operation.createdAt || "").trim(),
+          localAddedAt: String(operation.localAddedAt || "").trim(),
           type: normalizedType,
           amount: round2(Math.abs(Number(operation.amount) || 0)),
           categoryId: operation.categoryId || "",
