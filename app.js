@@ -2156,7 +2156,7 @@
         const query = encodeURIComponent("name = 'moneyflow-data.json' and trashed = false");
         const fileListResponse = await fetch(
           `https://www.googleapis.com/drive/v3/files?q=${query}&orderBy=modifiedTime desc&pageSize=1&fields=files(id,name,modifiedTime)`,
-          { headers: { Authorization: `Bearer ${accessToken}` } },
+          { headers: { Authorization: `Bearer ${accessToken}` }, cache: "no-store" },
         );
         if (!fileListResponse.ok) throw new Error(`Google Drive: ${fileListResponse.status}`);
         const fileList = await fileListResponse.json();
@@ -2175,6 +2175,7 @@
       }
       const permissionResponse = await fetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(state.syncSettings.googleFileId)}?fields=capabilities(canEdit)`, {
         headers: { Authorization: `Bearer ${accessToken}` },
+        cache: "no-store",
       });
       if (!permissionResponse.ok) {
         throw new Error(permissionResponse.status === 404
@@ -2187,6 +2188,7 @@
       updateCloudAccessUI();
       const response = await fetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(state.syncSettings.googleFileId)}?alt=media`, {
         headers: { Authorization: `Bearer ${accessToken}` },
+        cache: "no-store",
       });
       if (!response.ok) {
         throw new Error(response.status === 404
