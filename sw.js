@@ -1,4 +1,4 @@
-const CACHE_NAME = "moneyflow-v87";
+const CACHE_NAME = "moneyflow-v88";
 const ASSETS = [
   "./",
   "./index.html",
@@ -38,6 +38,10 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
+
+  const requestUrl = new URL(event.request.url);
+  const scope = new URL(self.registration.scope);
+  if (requestUrl.origin !== scope.origin) return;
 
   if (isAppShellRequest(event.request)) {
     event.respondWith(fetchAndCache(event.request));
