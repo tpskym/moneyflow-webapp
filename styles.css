@@ -78,6 +78,11 @@ body {
   line-height: 1.15;
 }
 
+.sync-button-with-icon span:last-child,
+.quick-add-toggle span:last-child {
+  overflow-wrap: anywhere;
+}
+
 .btn-icon {
   display: inline-flex;
   align-items: center;
@@ -639,6 +644,12 @@ textarea:focus-visible {
   text-align: center;
   padding: 14px 8px;
   color: var(--muted);
+}
+
+@media (max-width: 420px) {
+  .sync-actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 @media (min-width: 680px) {
