@@ -52,6 +52,7 @@
     balanceTitle: document.getElementById("balance-title"),
     loadMoreOperationsButton: document.getElementById("load-more-operations"),
     yearFilterContainer: document.getElementById("year-filters"),
+    categoryFilterContainer: document.getElementById("category-filters"),
     syncToggleButton: document.getElementById("sync-settings-toggle"),
     syncSettingsCard: document.getElementById("sync-settings-section"),
     syncWebDavPathInput: document.getElementById("webdav-path"),
@@ -81,6 +82,7 @@
     searchText: "",
     activeTypeFilter: "all",
     activeYearFilter: new Set(),
+    activeCategoryFilter: new Set(),
     operationType: "income",
     currentPage: 1,
     pageSize: 20,
@@ -121,6 +123,7 @@
     setQuickAddDate(getTodayInputDate());
     renderCategoryOptions();
     renderYearFilters();
+    renderCategoryFilters();
     bindEvents();
     render();
     registerServiceWorker();
@@ -170,6 +173,7 @@
     elements.searchToggleButton?.addEventListener("click", onSearchToggle);
     elements.searchInput.addEventListener("input", onSearchInput);
     elements.yearFilterContainer?.addEventListener("click", onYearFilterClick);
+    elements.categoryFilterContainer?.addEventListener("click", onCategoryFilterClick);
     elements.loadMoreOperationsButton.addEventListener("click", loadMoreOperations);
     elements.syncSaveButton?.addEventListener("click", onSyncSave);
     elements.clearDataButton?.addEventListener("click", onClearLocalData);
@@ -238,6 +242,26 @@
     render();
   }
 
+  function onCategoryFilterClick(event) {
+    const button = event.target.closest("[data-category-filter]");
+    if (!button) return;
+
+    const categoryId = button.dataset.categoryFilter;
+    if (categoryId === "all") {
+      state.activeCategoryFilter = new Set();
+    } else {
+      const selectedCategories = new Set(state.activeCategoryFilter);
+      if (selectedCategories.has(categoryId)) {
+        selectedCategories.delete(categoryId);
+      } else {
+        selectedCategories.add(categoryId);
+      }
+      state.activeCategoryFilter = selectedCategories;
+    }
+    state.currentPage = 1;
+    render();
+  }
+
   function onTypeToggleClick(event) {
     const button = event.target.closest("[data-type]");
     if (!button) return;
@@ -300,6 +324,7 @@
     state.syncSettings.lastSyncedAt = "";
     state.searchText = "";
     state.activeTypeFilter = "all";
+    state.activeCategoryFilter = new Set();
     state.currentPage = 1;
     state.categorySearchText = "";
     state.categoryCurrentPage = 1;
@@ -1101,6 +1126,7 @@
 
     updateBalances(filteredBalance);
     renderYearFilters();
+    renderCategoryFilters();
     renderCategoryOptions();
     renderOperationsList(pageItems);
     updatePager(visibleOperations.length, safeTotalPages);
@@ -1130,6 +1156,7 @@
     const filteredByQuery = opsWithBalance
       .filter((operation) => {
         if (!["income", "expense"].includes(operation.type)) return false;
+        if (state.activeCategoryFilter.size && !state.activeCategoryFilter.has(operation.categoryId)) return false;
 
         if (!normalizedQuery) return true;
 
@@ -1215,6 +1242,23 @@
   function getOperationYear(operation) {
     const operationDate = parseDateFromValue(getOperationDateValue(operation));
     return operationDate.getFullYear();
+  }
+
+  function renderCategoryFilters() {
+    if (!elements.categoryFilterContainer) return;
+
+    const selectedCategories = state.activeCategoryFilter instanceof Set ? state.activeCategoryFilter : new Set();
+    const categories = getCategoriesForPicker();
+    const allButton = `<button type="button" class="chip ${selectedCategories.size === 0 ? "active" : ""}" data-category-filter="all">Все категории</button>`;
+    const categoryButtons = categories
+      .map((category) => {
+        const selected = selectedCategories.has(category.id);
+        const dotStyle = `background:${category.color || "#64748b"}`;
+        return `<button type="button" class="chip category-filter-chip ${selected ? "active" : ""}" data-category-filter="${escapeHtml(category.id)}"><span class="category-dot" style="${dotStyle}"></span>${escapeHtml(category.name)}</button>`;
+      })
+      .join("");
+
+    elements.categoryFilterContainer.innerHTML = `${allButton}${categoryButtons}`;
   }
 
   function renderYearFilters() {

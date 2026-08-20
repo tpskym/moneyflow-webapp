@@ -573,6 +573,27 @@ textarea:focus-visible {
   display: none;
 }
 
+.category-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-height: 180px;
+  overflow-y: auto;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.category-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.category-filter-chip .category-dot {
+  flex: 0 0 auto;
+}
+
 .chip {
   border: 1px solid var(--line);
   background: #1f2937;
