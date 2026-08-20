@@ -1267,14 +1267,24 @@
   }
 
   function updateCloudAccessUI() {
-    const isReadOnly = Boolean(state.syncSettings.googleFileId) && state.syncSettings.accessMode !== "writer";
+    const hasClientId = Boolean(state.syncSettings.googleClientId);
+    const hasFileId = Boolean(state.syncSettings.googleFileId);
+    const isReadOnly = hasFileId && state.syncSettings.accessMode !== "writer";
+    const canUpload = hasClientId && (!hasFileId || !isReadOnly);
+    const canSync = hasClientId && hasFileId;
+
     [elements.cloudUploadTopButton, elements.cloudUploadButton].forEach((button) => {
-      if (button) button.hidden = isReadOnly;
+      if (button) button.hidden = !canUpload;
+    });
+    [elements.cloudDownloadTopButton, elements.cloudDownloadButton].forEach((button) => {
+      if (button) button.hidden = !canSync;
     });
     if (elements.quickAddToggleButton) {
       elements.quickAddToggleButton.hidden = isReadOnly;
     }
-    elements.cloudDownloadTopButton?.closest(".sync-actions")?.classList.toggle("is-readonly", isReadOnly);
+    const syncActions = elements.cloudDownloadTopButton?.closest(".sync-actions");
+    syncActions?.classList.toggle("is-readonly", isReadOnly);
+    syncActions?.classList.toggle("has-single-cloud-action", (canUpload ? 1 : 0) + (canSync ? 1 : 0) === 1);
     if (isReadOnly) updateQuickAddVisibility(false);
   }
 
