@@ -1345,3 +1345,8 @@ body.amounts-hidden .chart-legend-item strong::after {
 body.amounts-hidden #balance-current::after {
   font-size: clamp(2rem, 7vw, 3.2rem);
 }
+
+body.amounts-hidden #charts-toggle,
+body.amounts-hidden #category-charts {
+  display: none !important;
+}
