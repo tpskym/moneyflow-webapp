@@ -55,6 +55,9 @@
     categoryFilterContainer: document.getElementById("category-filters"),
     syncToggleButton: document.getElementById("sync-settings-toggle"),
     syncSettingsCard: document.getElementById("sync-settings-section"),
+    instructionsToggleButton: document.getElementById("instructions-toggle"),
+    instructionsCard: document.getElementById("instructions-section"),
+    instructionsCloseButton: document.getElementById("instructions-close"),
     syncGoogleClientIdInput: document.getElementById("google-client-id"),
     syncGoogleFileIdInput: document.getElementById("google-file-id"),
     syncAccessModeInput: document.getElementById("cloud-access-mode"),
@@ -109,6 +112,7 @@
     renderSyncSettingsForm();
     syncApplyTypeFromState();
     updateSyncSettingsVisibility(false);
+    updateInstructionsVisibility(false);
     updateQuickAddVisibility(false);
     updateSearchVisibility(false);
     setQuickAddDate(getTodayInputDate());
@@ -173,6 +177,8 @@
     elements.cloudUploadButton?.addEventListener("click", onCloudUpload);
     elements.cloudDownloadButton?.addEventListener("click", onCloudDownload);
     elements.syncToggleButton?.addEventListener("click", onSyncToggle);
+    elements.instructionsToggleButton?.addEventListener("click", onInstructionsToggle);
+    elements.instructionsCloseButton?.addEventListener("click", () => updateInstructionsVisibility(false));
     elements.quickAddToggleButton?.addEventListener("click", onQuickAddToggle);
     elements.operationDateInput?.addEventListener("input", onOperationDateInput);
     elements.operationDateInput?.addEventListener("blur", onOperationDateInputBlur);
@@ -265,7 +271,15 @@
 
   function onSyncToggle() {
     const shouldOpen = Boolean(elements.syncSettingsCard?.hidden);
+    updateInstructionsVisibility(false);
     updateSyncSettingsVisibility(shouldOpen);
+  }
+
+  function onInstructionsToggle() {
+    const shouldOpen = Boolean(elements.instructionsCard?.hidden);
+    updateSyncSettingsVisibility(false);
+    updateQuickAddVisibility(false);
+    updateInstructionsVisibility(shouldOpen);
   }
 
   function onQuickAddToggle() {
@@ -1235,6 +1249,16 @@
     const hiddenLabel = open ? "Скрыть настройки синхронизации" : "Настройки синхронизации";
     elements.syncToggleButton.setAttribute("aria-label", hiddenLabel);
     elements.syncToggleButton.setAttribute("title", hiddenLabel);
+  }
+
+  function updateInstructionsVisibility(open) {
+    if (!elements.instructionsCard || !elements.instructionsToggleButton) return;
+
+    elements.instructionsCard.hidden = !open;
+    elements.instructionsToggleButton.classList.toggle("is-open", open);
+    const label = open ? "Скрыть инструкцию" : "Как начать";
+    elements.instructionsToggleButton.setAttribute("aria-label", label);
+    elements.instructionsToggleButton.setAttribute("title", label);
   }
 
   function updateQuickAddVisibility(open) {

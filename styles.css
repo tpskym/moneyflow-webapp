@@ -71,6 +71,24 @@ body {
   transform: rotate(35deg);
 }
 
+.instructions-list {
+  margin: 0 0 14px;
+  padding-left: 22px;
+  display: grid;
+  gap: 10px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.instructions-list a {
+  color: #67e8f9;
+}
+
+.instructions-list code {
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
 .sync-button-with-icon {
   gap: 8px;
   min-width: 0;

@@ -13,7 +13,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icons/moneyflow.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="icons/moneyflow.svg" />
-    <link rel="stylesheet" href="styles.css?v=51" />
+    <link rel="stylesheet" href="styles.css?v=52" />
   </head>
   <body>
     <div class="page">
@@ -24,6 +24,16 @@
           <p class="subtitle">Учет доходов и расходов <span class="app-version">v50</span></p>
         </div>
         <div class="header-tools">
+          <button
+            type="button"
+            id="instructions-toggle"
+            class="btn btn--small btn--secondary sync-toggle"
+            aria-label="Открыть инструкцию"
+            title="Как начать"
+          >
+            <span class="btn-icon" aria-hidden="true">?</span>
+            <span class="sr-only">Как начать</span>
+          </button>
           <button
             type="button"
             id="sync-settings-toggle"
@@ -55,6 +65,19 @@
       </header>
 
       <main>
+        <section class="card sync-card" id="instructions-section" hidden>
+          <h2>Как начать</h2>
+          <ol class="instructions-list">
+            <li>Откройте <a href="https://console.cloud.google.com/" target="_blank" rel="noreferrer">Google Cloud Console</a> под своим аккаунтом.</li>
+            <li>В разделе APIs &amp; Services включите Google Drive API.</li>
+            <li>В Credentials создайте OAuth Client ID типа Web application.</li>
+            <li>Добавьте в Authorized JavaScript origins адрес <code>https://tpskym.github.io</code>.</li>
+            <li>Скопируйте Client ID в настройки приложения. На устройстве, где ведёте учёт, оставьте режим «Веду данные» и нажмите «Выгрузить».</li>
+            <li>Для другого устройства откройте файл в Google Drive, дайте его аккаунту доступ, скопируйте ID файла из настроек приложения и выберите «Только чтение».</li>
+          </ol>
+          <button id="instructions-close" type="button" class="btn btn--secondary">Закрыть инструкцию</button>
+        </section>
+
         <section class="card sync-card" id="sync-settings-section" hidden>
           <h2>Google Drive</h2>
           <label class="field">
@@ -203,6 +226,6 @@
     </div>
 
     <script src="https://accounts.google.com/gsi/client" async></script>
-    <script src="app.js?v=51" defer></script>
+    <script src="app.js?v=52" defer></script>
   </body>
 </html>
