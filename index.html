@@ -13,7 +13,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icons/moneyflow.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="icons/moneyflow.svg" />
-    <link rel="stylesheet" href="styles.css?v=61" />
+    <link rel="stylesheet" href="styles.css?v=62" />
   </head>
   <body>
     <div class="page">
@@ -21,7 +21,7 @@
         <div class="header-heading">
           <p class="eyebrow">Личный счёт</p>
           <h1>MoneyFlow</h1>
-          <p class="subtitle">Учет доходов и расходов <span class="app-version">v61</span></p>
+          <p class="subtitle">Учет доходов и расходов <span class="app-version">v62</span></p>
         </div>
         <div class="header-tools">
           <button
@@ -72,7 +72,7 @@
             <li>В разделе APIs &amp; Services включите Google Drive API.</li>
             <li>В Credentials создайте OAuth Client ID типа Web application.</li>
             <li>Добавьте в Authorized JavaScript origins адрес <code>https://tpskym.github.io</code>.</li>
-            <li>Скопируйте Client ID в настройки приложения и нажмите «Сохранить настройки». Затем появится кнопка «Выгрузить».</li>
+            <li>Скопируйте Client ID в настройки приложения и нажмите «Сохранить настройки». Затем нажмите «Выгрузить»: при первом запуске она создаст JSON-файл в Google Drive и полностью запишет в него текущие данные этого устройства.</li>
             <li>Для другого устройства откройте файл в Google Drive, дайте его аккаунту доступ и скопируйте ID файла в настройки приложения. После «Синхронизировать» режим определится автоматически.</li>
           </ol>
           <button id="instructions-close" type="button" class="btn btn--secondary">Закрыть инструкцию</button>
@@ -221,6 +221,6 @@
     </div>
 
     <script src="https://accounts.google.com/gsi/client" async></script>
-    <script src="app.js?v=61" defer></script>
+    <script src="app.js?v=62" defer></script>
   </body>
 </html>
