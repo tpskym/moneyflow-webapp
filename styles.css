@@ -374,17 +374,26 @@ textarea:focus-visible {
   width: 100%;
 }
 
+.operations-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.operations-toolbar h2 {
+  font-size: 20px;
+}
+
 .search {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 46px;
-  gap: 10px;
-  align-items: end;
   margin-bottom: 12px;
 }
 
+.search:not(.is-open) {
+  display: none;
+}
+
 .search-toggle {
-  grid-column: 2;
-  grid-row: 1;
   width: 46px;
   min-width: 46px;
   padding: 0;
@@ -404,13 +413,11 @@ textarea:focus-visible {
 }
 
 .search-field {
-  grid-column: 1;
-  grid-row: 1;
   min-width: 0;
 }
 
-.search-filters {
-  grid-column: 1 / -1;
+.search-filters[hidden] {
+  display: none;
 }
 
 .field-search {
