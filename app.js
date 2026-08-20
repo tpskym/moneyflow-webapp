@@ -11,6 +11,10 @@
   const PASSWORD_CRYPTO_DB = "moneyflow-security-v1";
   const PASSWORD_CRYPTO_STORE = "keys";
   const PASSWORD_CRYPTO_KEY_ID = "webdav-password";
+  const CATEGORY_COLORS = [
+    "#EF4444", "#F97316", "#EAB308", "#84CC16", "#22C55E", "#14B8A6",
+    "#06B6D4", "#0EA5E9", "#3B82F6", "#6366F1", "#8B5CF6", "#EC4899",
+  ];
   const CATEGORY_PAGE_SIZE = 20;
   const CATEGORY_SEARCH_SIMILARITY_THRESHOLD = 0.48;
   const CURRENT_YEAR_LOOKBACK = 5;
@@ -2119,12 +2123,20 @@
       id: getCategoryId(trimName),
       name: trimName,
       mode: "both",
-      color: normalizeHexColor(color || "#64748b"),
+      color: normalizeHexColor(color || getRandomCategoryColor()),
     };
 
     state.categories.push(category);
     writeJson(STORAGE_KEYS.categories, state.categories);
     return category;
+  }
+
+  function getRandomCategoryColor() {
+    const usedColors = new Set(state.categories.map((category) => normalizeHexColor(category.color)));
+    const availableColors = CATEGORY_COLORS.filter((color) => !usedColors.has(color));
+    const palette = availableColors.length ? availableColors : CATEGORY_COLORS;
+    const randomIndex = Math.floor(Math.random() * palette.length);
+    return palette[randomIndex];
   }
 
   function addCategoryFromPickerSearch() {
