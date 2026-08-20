@@ -2355,8 +2355,8 @@
     renderSyncSettingsForm();
     updateCloudAccessUI();
     if (elements.readerLinkInput) elements.readerLinkInput.value = "";
-    setSyncStatus("Подключение читателя сохранено. Нажмите «Синхронизировать».");
-    showAppNotice("Подключение сохранено. Теперь нажмите «Синхронизировать».");
+    setSyncStatus("Подключение сохранено. Загружаю данные из облака...");
+    await downloadFromGoogleDrive({ skipReplaceConfirmation: true });
   }
 
   function getReaderConnectionLink() {
