@@ -242,7 +242,6 @@
       if (!elements.operationDateInput?.value) {
         setQuickAddDate(getTodayInputDate());
       }
-      elements.amountInput?.focus();
       if (elements.form) {
         elements.form.scrollIntoView({ behavior: "smooth", block: "center" });
       }
@@ -569,7 +568,6 @@
       return;
     }
 
-    elements.amountInput.focus();
   }
 
   function setQuickAddMode(mode, sourceOperationId = "") {
@@ -598,7 +596,6 @@
     }
 
     const readOnlyInputs = [
-      elements.amountInput,
       elements.operationDateInput,
       elements.descriptionInput,
     ];
@@ -614,6 +611,10 @@
 
     if (elements.categoryPickerInput) {
       elements.categoryPickerInput.readOnly = isViewMode || !state.categorySearchEditing;
+    }
+
+    if (elements.amountInput) {
+      elements.amountInput.readOnly = true;
     }
 
     if (elements.amountKeypad) {
