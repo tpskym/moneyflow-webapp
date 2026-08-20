@@ -372,7 +372,6 @@
     renderCategoryOptions();
     state.currentPage = 1;
     render();
-    elements.searchInput.focus();
   }
 
   function onQuickAddDismiss() {
