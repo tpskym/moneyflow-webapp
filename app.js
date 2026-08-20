@@ -1190,12 +1190,6 @@
 
   function renderCategoryOptions() {
     const result = getCategoryPickerSlice();
-    const fallbackCategory = getAllCategoriesSorted()[0];
-    const hasSelection = elements.categorySelect.value && state.categories.some((category) => category.id === elements.categorySelect.value);
-    if (!hasSelection && fallbackCategory && !state.categorySearchText) {
-      setCategorySelection(fallbackCategory.id);
-    }
-
     const searchValue = (state.categorySearchText || "").trim();
     const normalizedSearchValue = normalizeTextForSearch(searchValue);
     const hasExactCategoryMatch = !!(searchValue && findCategoryByNormalizedName(normalizedSearchValue));
