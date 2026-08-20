@@ -137,8 +137,12 @@
 
         <section class="card">
           <div class="search">
-            <button id="search-toggle" type="button" class="btn btn--secondary search-toggle" aria-expanded="false">
-              Поиск
+            <button id="search-toggle" type="button" class="btn btn--secondary search-toggle" aria-expanded="false" aria-label="Открыть поиск" title="Открыть поиск">
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <circle cx="10.5" cy="10.5" r="5.5"></circle>
+                <path d="m15 15 5 5"></path>
+              </svg>
+              <span class="sr-only">Открыть поиск</span>
             </button>
             <div id="search-field" class="search-field" hidden>
               <label class="field">

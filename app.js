@@ -1175,7 +1175,9 @@
     elements.searchField.hidden = !open;
     elements.searchToggleButton.setAttribute("aria-expanded", String(open));
     elements.searchToggleButton.classList.toggle("is-open", open);
-    elements.searchToggleButton.textContent = open ? "Скрыть поиск" : "Поиск";
+    const label = open ? "Скрыть поиск" : "Открыть поиск";
+    elements.searchToggleButton.setAttribute("aria-label", label);
+    elements.searchToggleButton.setAttribute("title", label);
     if (focus) {
       elements.searchInput?.focus();
     }
