@@ -21,7 +21,7 @@
         <div class="header-heading">
           <p class="eyebrow">Личный счёт</p>
           <h1>MoneyFlow</h1>
-          <p class="subtitle">Учет доходов и расходов <span class="app-version">v34</span></p>
+          <p class="subtitle">Учет доходов и расходов <span class="app-version">v35</span></p>
         </div>
         <div class="header-tools">
           <button
@@ -129,12 +129,17 @@
               </div>
               <input type="hidden" id="operation-category" required />
               <div id="category-picker-popover" class="category-picker-popover" hidden>
-              <div id="category-picker-list" class="category-picker-list" aria-live="polite"></div>
-              <div class="category-picker-pager">
-                <button type="button" id="category-picker-load-more" class="btn btn--small">Загрузить ещё</button>
+                <button type="button" id="category-create-toggle" class="btn btn--secondary category-create-toggle">Добавить категорию</button>
+                <div id="category-create-form" class="category-create-form" hidden>
+                  <label class="sr-only" for="category-create-name">Название новой категории</label>
+                  <input id="category-create-name" type="text" autocomplete="off" placeholder="Название категории" />
+                  <div class="category-create-actions">
+                    <button type="button" id="category-create-save" class="btn">Сохранить</button>
+                    <button type="button" id="category-create-cancel" class="btn btn--secondary">Отмена</button>
+                  </div>
+                </div>
+                <div id="category-picker-list" class="category-picker-list" aria-live="polite"></div>
               </div>
-              </div>
-              <div id="popular-categories" class="popular-categories" aria-label="Частые категории" hidden></div>
             </div>
             <label class="field field-wide">
               Описание

@@ -22,7 +22,11 @@
     categoryPickerToggle: document.getElementById("category-picker-toggle"),
     categoryPickerPopover: document.getElementById("category-picker-popover"),
     categoryPickerList: document.getElementById("category-picker-list"),
-    categoryPickerLoadMoreBtn: document.getElementById("category-picker-load-more"),
+    categoryCreateToggleButton: document.getElementById("category-create-toggle"),
+    categoryCreateNameInput: document.getElementById("category-create-name"),
+    categoryCreateSaveButton: document.getElementById("category-create-save"),
+    categoryCreateCancelButton: document.getElementById("category-create-cancel"),
+    categoryCreateForm: document.getElementById("category-create-form"),
     amountInput: document.getElementById("operation-amount"),
     amountDisplay: document.getElementById("operation-amount-display"),
     amountKeypad: document.getElementById("amount-keypad"),
@@ -140,7 +144,9 @@
     elements.categoryPickerInput.addEventListener("keydown", onCategoryInputKeydown);
     elements.categoryPickerInput.addEventListener("input", onCategoryInputChange);
     elements.categoryPickerToggle.addEventListener("click", toggleCategoryPicker);
-    elements.categoryPickerLoadMoreBtn.addEventListener("click", loadMoreCategories);
+    elements.categoryCreateToggleButton?.addEventListener("click", openCategoryCreator);
+    elements.categoryCreateSaveButton?.addEventListener("click", onCreateCategory);
+    elements.categoryCreateCancelButton?.addEventListener("click", closeCategoryCreator);
     elements.categoryPickerList.addEventListener("click", onCategoryPickerSelect);
     elements.popularCategories?.addEventListener("click", onPopularCategoryClick);
     elements.searchToggleButton?.addEventListener("click", onSearchToggle);
@@ -1336,41 +1342,13 @@
   }
 
   function renderCategoryOptions() {
-    renderPopularCategories();
-    const result = getCategoryPickerSlice();
-    const searchValue = (state.categorySearchText || "").trim();
-    const normalizedSearchValue = normalizeTextForSearch(searchValue);
-    const hasExactCategoryMatch = !!(searchValue && findCategoryByNormalizedName(normalizedSearchValue));
-    const addCategoryOption = searchValue && !hasExactCategoryMatch
-      ? `
-        <button type="button" class="category-picker-option category-picker-option--add" data-action="add-category">
-          <span class="category-picker-add-mark">+</span>
-          <span>Добавить категорию «${escapeHtml(searchValue)}»</span>
-        </button>
-      `
-      : "";
-    const startCategorySearchOption = state.categorySearchEditing
-      ? ""
-      : `
-        <button type="button" class="category-picker-option category-picker-option--add" data-action="start-category-search">
-          <span class="category-picker-add-mark">+</span>
-          <span>Найти или добавить категорию</span>
-        </button>
-      `;
-
-    if (!result.totalItems) {
-      if (!searchValue) {
-        elements.categoryPickerList.innerHTML = `${startCategorySearchOption}<div class="empty">Категории не найдены</div>`;
-      } else if (addCategoryOption) {
-        elements.categoryPickerList.innerHTML = addCategoryOption;
-      } else {
-        elements.categoryPickerList.innerHTML = `<div class="empty">Категории не найдены</div>`;
-      }
-      updateCategoryPickerPager(result.totalItems, result.totalPages);
+    const categories = getCategoriesForPicker();
+    if (!categories.length) {
+      elements.categoryPickerList.innerHTML = `<div class="empty">Категорий пока нет</div>`;
       return;
     }
 
-    const items = result.pageItems
+    elements.categoryPickerList.innerHTML = categories
       .map((category) => {
         const isSelected = category.id === elements.categorySelect.value;
         const dotStyle = `background:${category.color || "#64748b"}`;
@@ -1382,8 +1360,28 @@
         `;
       })
       .join("");
-    elements.categoryPickerList.innerHTML = `${startCategorySearchOption}${addCategoryOption}${items}`;
-    updateCategoryPickerPager(result.totalItems, result.totalPages);
+  }
+
+  function getCategoriesForPicker() {
+    const useCount = new Map();
+    for (const operation of state.operations) {
+      if (!operation?.categoryId) continue;
+      useCount.set(operation.categoryId, (useCount.get(operation.categoryId) || 0) + 1);
+    }
+
+    const popular = state.categories
+      .filter((category) => (useCount.get(category.id) || 0) > 0)
+      .sort((left, right) => {
+        const countDiff = (useCount.get(right.id) || 0) - (useCount.get(left.id) || 0);
+        return countDiff || normalizeTextForSearch(left.name).localeCompare(normalizeTextForSearch(right.name), "ru");
+      })
+      .slice(0, 6);
+    const popularIds = new Set(popular.map((category) => category.id));
+    const alphabetical = state.categories
+      .filter((category) => !popularIds.has(category.id))
+      .sort((left, right) => normalizeTextForSearch(left.name).localeCompare(normalizeTextForSearch(right.name), "ru"));
+
+    return [...popular, ...alphabetical];
   }
 
   function renderPopularCategories() {
@@ -1646,6 +1644,30 @@
     closeCategoryPicker();
   }
 
+  function openCategoryCreator() {
+    if (state.quickAddMode === "view" || !elements.categoryCreateForm || !elements.categoryCreateNameInput) return;
+    elements.categoryCreateForm.hidden = false;
+    elements.categoryCreateNameInput.value = "";
+    elements.categoryCreateNameInput.focus({ preventScroll: true });
+  }
+
+  function closeCategoryCreator() {
+    if (elements.categoryCreateForm) elements.categoryCreateForm.hidden = true;
+    if (elements.categoryCreateNameInput) elements.categoryCreateNameInput.value = "";
+  }
+
+  function onCreateCategory() {
+    const category = addCategory(elements.categoryCreateNameInput?.value || "");
+    if (!category) {
+      elements.categoryCreateNameInput?.focus({ preventScroll: true });
+      return;
+    }
+    setCategorySelection(category.id);
+    closeCategoryCreator();
+    renderCategoryOptions();
+    closeCategoryPicker();
+  }
+
   function startCategorySearch() {
     if (state.quickAddMode === "view" || !elements.categoryPickerInput) return;
     state.categorySearchEditing = true;
@@ -1700,6 +1722,7 @@
   function closeCategoryPicker() {
     if (!elements.categoryPickerPopover) return;
     elements.categoryPickerPopover.hidden = true;
+    closeCategoryCreator();
     if (!state.categorySearchEditing) return;
 
     state.categorySearchEditing = false;

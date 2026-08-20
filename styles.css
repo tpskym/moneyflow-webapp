@@ -315,30 +315,34 @@ h1 {
   border-radius: 12px;
   padding: 10px;
   box-shadow: 0 18px 40px rgba(2, 6, 23, 0.45);
+  display: grid;
+  gap: 10px;
 }
 
 .category-picker-list {
   max-height: 250px;
   overflow: auto;
-  display: grid;
-  gap: 6px;
-  min-height: 52px;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 8px;
+  min-height: 44px;
   border-top: 1px solid var(--line);
   padding-top: 8px;
 }
 
 .category-picker-option {
-  width: 100%;
+  width: auto;
   text-align: left;
   background: rgba(15, 23, 42, 0.55);
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: 999px;
   color: var(--text);
   display: flex;
   gap: 8px;
   align-items: center;
-  padding: 10px 12px;
-  min-height: 42px;
+  padding: 8px 12px;
+  min-height: 38px;
   cursor: pointer;
 }
 
@@ -364,6 +368,21 @@ h1 {
   font-weight: 700;
   line-height: 1;
   flex: 0 0 auto;
+}
+
+.category-create-toggle {
+  width: 100%;
+}
+
+.category-create-form {
+  display: grid;
+  gap: 8px;
+}
+
+.category-create-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
 }
 
 input,
