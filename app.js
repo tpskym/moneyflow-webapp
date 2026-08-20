@@ -366,6 +366,7 @@
     setQuickAddDate(getTodayInputDate());
     setQuickAddMode("add");
     syncApplyTypeFromState();
+    updateQuickAddVisibility(false);
     renderCategoryOptions();
     state.currentPage = 1;
     render();
