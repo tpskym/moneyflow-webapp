@@ -67,6 +67,8 @@
     cloudDownloadTopButton: document.getElementById("cloud-download-top"),
     cloudUploadButton: document.getElementById("cloud-upload"),
     cloudDownloadButton: document.getElementById("cloud-download"),
+    existingCloudConnect: document.getElementById("existing-cloud-connect"),
+    connectExistingCloudButton: document.getElementById("cloud-connect-existing"),
     readerInvite: document.getElementById("reader-invite"),
     readerEmailInput: document.getElementById("reader-email"),
     readerInviteButton: document.getElementById("reader-invite-button"),
@@ -191,6 +193,7 @@
     elements.cloudDownloadTopButton?.addEventListener("click", onCloudDownload);
     elements.cloudUploadButton?.addEventListener("click", onCloudUpload);
     elements.cloudDownloadButton?.addEventListener("click", onCloudDownload);
+    elements.connectExistingCloudButton?.addEventListener("click", onConnectExistingCloud);
     elements.readerInviteButton?.addEventListener("click", onInviteReader);
     elements.syncToggleButton?.addEventListener("click", onSyncToggle);
     elements.instructionsToggleButton?.addEventListener("click", onInstructionsToggle);
@@ -415,6 +418,16 @@
       return;
     }
     downloadFromGoogleDrive();
+  }
+
+  async function onConnectExistingCloud() {
+    const fileId = String(elements.syncGoogleFileIdInput?.value || "").trim();
+    if (!fileId) {
+      setSyncStatus("Укажите ID существующего файла Google Drive.");
+      elements.syncGoogleFileIdInput?.focus();
+      return;
+    }
+    await onCloudDownload();
   }
 
   function onAmountKeypadClick(event) {
@@ -1287,18 +1300,21 @@
   function updateCloudAccessUI() {
     const hasClientId = Boolean(state.syncSettings.googleClientId);
     const hasFileId = Boolean(state.syncSettings.googleFileId);
-    const isReadOnly = hasFileId && state.syncSettings.accessMode !== "writer";
-    const canUpload = hasClientId && (!hasFileId || !isReadOnly);
+    const isReadOnly = hasFileId && state.syncSettings.accessMode === "reader";
+    const isNotWriter = hasFileId && state.syncSettings.accessMode !== "writer";
+    const canUpload = hasClientId && (!hasFileId || !isNotWriter);
     const canSync = hasClientId && hasFileId;
 
     [elements.cloudUploadTopButton, elements.cloudUploadButton].forEach((button) => {
       if (button) button.hidden = !canUpload;
     });
-    [elements.cloudDownloadTopButton, elements.cloudDownloadButton].forEach((button) => {
-      if (button) button.hidden = !canSync;
-    });
+    if (elements.cloudDownloadTopButton) elements.cloudDownloadTopButton.hidden = !isReadOnly;
+    if (elements.cloudDownloadButton) {
+      elements.cloudDownloadButton.hidden = !canSync;
+      elements.cloudDownloadButton.textContent = isReadOnly ? "Синхронизировать" : "Загрузить из облака";
+    }
     if (elements.quickAddToggleButton) {
-      elements.quickAddToggleButton.hidden = isReadOnly;
+      elements.quickAddToggleButton.hidden = isNotWriter;
     }
     if (elements.syncGoogleClientIdField) {
       elements.syncGoogleClientIdField.hidden = hasFileId;
@@ -1306,10 +1322,13 @@
     if (elements.readerInvite) {
       elements.readerInvite.hidden = !(hasClientId && hasFileId && state.syncSettings.accessMode === "writer");
     }
+    if (elements.existingCloudConnect) {
+      elements.existingCloudConnect.hidden = !(hasClientId && !hasFileId);
+    }
     const syncActions = elements.cloudDownloadTopButton?.closest(".sync-actions");
     syncActions?.classList.toggle("is-readonly", isReadOnly);
-    syncActions?.classList.toggle("has-single-cloud-action", (canUpload ? 1 : 0) + (canSync ? 1 : 0) === 1);
-    if (isReadOnly) updateQuickAddVisibility(false);
+    syncActions?.classList.toggle("has-single-cloud-action", (canUpload ? 1 : 0) + (isReadOnly ? 1 : 0) === 1);
+    if (isNotWriter) updateQuickAddVisibility(false);
   }
 
   function updateInstructionsVisibility(open) {
