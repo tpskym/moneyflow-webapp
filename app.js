@@ -539,6 +539,7 @@
     state.categories = [];
     state.cloudPassphrase = "";
     localStorage.removeItem(STORAGE_KEYS.cloudPassphrase);
+    if (elements.cloudPassphraseInput) elements.cloudPassphraseInput.value = "";
     resetCloudEncryptionMaterial();
     state.syncSettings = {
       googleClientId: "",
@@ -2644,12 +2645,42 @@
     };
   }
 
+  async function restoreEditorEncryptionKeyFromCloudFile(encryptedPayload) {
+    const kdf = encryptedPayload?.kdf;
+    if (!state.cloudPassphrase || kdf?.name !== "PBKDF2" || kdf?.hash !== "SHA-256" || Number(kdf?.iterations) !== 600000) {
+      return "";
+    }
+    try {
+      const salt = String(kdf.salt || "");
+      if (base64ToBytes(salt).byteLength !== 16) return "";
+      const material = await crypto.subtle.importKey("raw", new TextEncoder().encode(state.cloudPassphrase), "PBKDF2", false, ["deriveKey"]);
+      const derivedKey = await crypto.subtle.deriveKey(
+        { name: "PBKDF2", salt: base64ToBytes(salt), iterations: 600000, hash: "SHA-256" },
+        material,
+        { name: "AES-GCM", length: 256 },
+        true,
+        ["encrypt", "decrypt"],
+      );
+      const encryptionKey = bytesToBase64(new Uint8Array(await crypto.subtle.exportKey("raw", derivedKey)));
+      state.cloudEncryptionSalt = salt;
+      localStorage.setItem(STORAGE_KEYS.cloudEncryptionSalt, salt);
+      setCloudEncryptionKey(encryptionKey);
+      return encryptionKey;
+    } catch {
+      return "";
+    }
+  }
+
   async function decryptCloudPayload(encryptedPayload) {
     if (Array.isArray(encryptedPayload?.operations) && Array.isArray(encryptedPayload?.categories)) return encryptedPayload;
     if (encryptedPayload?.format !== "moneyflow-encrypted-v1") throw new Error("Файл не похож на зашифрованные данные MoneyFlow");
-    if (!isValidCloudEncryptionKey(state.cloudEncryptionKey)) throw new Error("В приложении нет ключа. Откройте актуальную ссылку подключения от редактора.");
+    let encryptionKey = state.cloudEncryptionKey;
+    if (!isValidCloudEncryptionKey(encryptionKey) && state.syncSettings.accessMode !== "reader") {
+      encryptionKey = await restoreEditorEncryptionKeyFromCloudFile(encryptedPayload);
+    }
+    if (!isValidCloudEncryptionKey(encryptionKey)) throw new Error("В приложении нет ключа. Откройте актуальную ссылку подключения от редактора.");
     try {
-      const key = await crypto.subtle.importKey("raw", base64ToBytes(state.cloudEncryptionKey), { name: "AES-GCM" }, false, ["decrypt"]);
+      const key = await crypto.subtle.importKey("raw", base64ToBytes(encryptionKey), { name: "AES-GCM" }, false, ["decrypt"]);
       const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv: base64ToBytes(encryptedPayload.iv) }, key, base64ToBytes(encryptedPayload.ciphertext));
       return JSON.parse(new TextDecoder().decode(decrypted));
     } catch {
