@@ -321,7 +321,7 @@
     }
   }
 
-  async function onSyncSave({ close = true } = {}) {
+  async function onSyncSave({ close = false } = {}) {
     const googleClientId = (elements.syncGoogleClientIdInput?.value || state.syncSettings.googleClientId || "").trim();
     const googleFileId = (elements.syncGoogleFileIdInput?.value || state.syncSettings.googleFileId || "").trim();
     state.syncSettings = sanitizeSyncSettings({
@@ -407,11 +407,11 @@
       updateSyncSettingsVisibility(true);
       return;
     }
-    const missingSyncSettings = getMissingSyncSettings({ needsFileId: true });
+    const missingSyncSettings = getMissingSyncSettings();
     if (missingSyncSettings.length > 0) {
       updateSyncSettingsVisibility(true);
       setSyncStatus(`Загрузка не выполнена: заполните ${missingSyncSettings.join(", ")}.`);
-      (elements.syncGoogleClientIdInput?.value ? elements.syncGoogleFileIdInput : elements.syncGoogleClientIdInput)?.focus();
+      elements.syncGoogleClientIdInput?.focus();
       return;
     }
     downloadFromGoogleDrive();
@@ -1290,7 +1290,7 @@
     const isReadOnly = hasFileId && state.syncSettings.accessMode === "reader";
     const isNotWriter = hasFileId && state.syncSettings.accessMode !== "writer";
     const canUpload = hasClientId && (!hasFileId || !isNotWriter);
-    const canSync = hasClientId && hasFileId;
+    const canSync = hasClientId;
 
     [elements.cloudUploadTopButton, elements.cloudUploadButton].forEach((button) => {
       if (button) button.hidden = !canUpload;
@@ -1823,12 +1823,30 @@
   }
 
   async function downloadFromGoogleDrive() {
-    if ((state.operations.length || state.categories.length) && !window.confirm("Загрузка из облака полностью заменит локальные операции и категории. Продолжить?")) {
-      return;
-    }
     setSyncStatus("Открываю вход Google и загружаю файл...");
     try {
       const accessToken = await getGoogleAccessToken("https://www.googleapis.com/auth/drive.readonly");
+      if (!state.syncSettings.googleFileId) {
+        const query = encodeURIComponent("name = 'moneyflow-data.json' and trashed = false");
+        const fileListResponse = await fetch(
+          `https://www.googleapis.com/drive/v3/files?q=${query}&orderBy=modifiedTime desc&pageSize=1&fields=files(id,name,modifiedTime)`,
+          { headers: { Authorization: `Bearer ${accessToken}` } },
+        );
+        if (!fileListResponse.ok) throw new Error(`Google Drive: ${fileListResponse.status}`);
+        const fileList = await fileListResponse.json();
+        const cloudFile = fileList?.files?.[0];
+        if (!cloudFile?.id) {
+          throw new Error("Файл MoneyFlow не найден. Сначала выгрузите данные в облако.");
+        }
+        state.syncSettings.googleFileId = cloudFile.id;
+        state.syncSettings.accessMode = "unknown";
+        await persistSyncSettings();
+        renderSyncSettingsForm();
+        updateCloudAccessUI();
+      }
+      if ((state.operations.length || state.categories.length) && !window.confirm("Загрузка из облака полностью заменит локальные операции и категории. Продолжить?")) {
+        return;
+      }
       const permissionResponse = await fetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(state.syncSettings.googleFileId)}?fields=capabilities(canEdit)`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
