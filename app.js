@@ -53,7 +53,6 @@
     loadMoreOperationsButton: document.getElementById("load-more-operations"),
     yearFilterContainer: document.getElementById("year-filters"),
     categoryFilterContainer: document.getElementById("category-filters"),
-    generateSampleDataButton: document.getElementById("generate-sample-data"),
     syncToggleButton: document.getElementById("sync-settings-toggle"),
     syncSettingsCard: document.getElementById("sync-settings-section"),
     syncWebDavPathInput: document.getElementById("webdav-path"),
@@ -174,7 +173,6 @@
     elements.searchInput.addEventListener("input", onSearchInput);
     elements.yearFilterContainer?.addEventListener("click", onYearFilterClick);
     elements.categoryFilterContainer?.addEventListener("click", onCategoryFilterClick);
-    elements.generateSampleDataButton?.addEventListener("click", onGenerateSampleData);
     elements.loadMoreOperationsButton.addEventListener("click", loadMoreOperations);
     elements.syncSaveButton?.addEventListener("click", onSyncSave);
     elements.clearDataButton?.addEventListener("click", onClearLocalData);
@@ -292,56 +290,6 @@
         elements.form.scrollIntoView({ behavior: "smooth", block: "center" });
       }
     }
-  }
-
-  function onGenerateSampleData() {
-    const confirmed = window.confirm(
-      "Добавить 100 новых категорий и 1 000 тестовых операций? Существующие данные не изменятся."
-    );
-    if (!confirmed) return;
-
-    const existingNames = new Set(state.categories.map((category) => normalizeTextForSearch(category.name)));
-    const generatedCategories = [];
-    let categoryNumber = 1;
-    while (generatedCategories.length < 100) {
-      const name = `Тестовая категория ${String(categoryNumber).padStart(3, "0")}`;
-      categoryNumber += 1;
-      if (existingNames.has(normalizeTextForSearch(name))) continue;
-
-      const category = {
-        id: getCategoryId(name),
-        name,
-        mode: "both",
-        color: getRandomCategoryColor(),
-      };
-      state.categories.push(category);
-      generatedCategories.push(category);
-      existingNames.add(normalizeTextForSearch(name));
-    }
-
-    const descriptions = ["Покупка", "Оплата", "Подписка", "Перевод", "Поступление", "Тестовая операция"];
-    const generatedOperations = [];
-    const now = Date.now();
-    for (let index = 0; index < 1000; index += 1) {
-      const date = new Date(now - Math.floor(Math.random() * 1_095) * 24 * 60 * 60 * 1000);
-      const type = Math.random() < 0.28 ? "income" : "expense";
-      generatedOperations.push({
-        id: getUuid(),
-        operationDate: operationDateOnlyString(date),
-        createdAt: "",
-        localAddedAt: new Date(now + index).toISOString(),
-        type,
-        amount: round2(50 + Math.random() * 14_950),
-        categoryId: generatedCategories[index % generatedCategories.length].id,
-        description: index % 4 === 0 ? "" : descriptions[index % descriptions.length],
-      });
-    }
-
-    state.operations.push(...generatedOperations);
-    writeJson(STORAGE_KEYS.categories, state.categories);
-    writeJson(STORAGE_KEYS.operations, state.operations);
-    state.currentPage = 1;
-    render();
   }
 
   async function onSyncSave({ close = true } = {}) {
