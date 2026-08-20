@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0f172a" />
+    <title>MoneyFlow</title>
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="header">
+        <p class="eyebrow">Личный счёт</p>
+        <h1>MoneyFlow</h1>
+          <p class="subtitle">Учет доходов и расходов</p>
+        <div class="sync-actions">
+          <button
+            type="button"
+            id="sync-settings-toggle"
+            class="btn btn--small btn--secondary sync-toggle"
+            aria-label="Открыть настройки синхронизации"
+            title="Открыть настройки синхронизации"
+          >
+            <span class="btn-icon" aria-hidden="true">⚙️</span>
+            <span class="sr-only">Открыть настройки синхронизации</span>
+          </button>
+          <button
+            type="button"
+            id="webdav-sync-top"
+            class="btn btn--small sync-button-with-icon"
+            aria-label="Синхронизировать"
+            title="Синхронизировать"
+          >
+            <span class="btn-icon" aria-hidden="true">🔄</span>
+            <span>Синхронизировать</span>
+          </button>
+          <button
+            type="button"
+            id="quick-add-toggle"
+            class="btn btn--small quick-add-toggle"
+            aria-label="Открыть быстрое добавление"
+            title="Открыть быстрое добавление"
+          >
+            <span class="btn-icon" aria-hidden="true">⚡</span>
+            <span>Быстрое добавление</span>
+          </button>
+        </div>
+      </header>
+
+      <main>
+        <section class="card sync-card" id="sync-settings-section" hidden>
+          <h2>Синхронизация</h2>
+          <label class="field">
+            Полный путь к файлу WebDAV
+            <input id="webdav-path" type="text" placeholder="https://domain/webdav/folder/moneyflow.json" />
+          </label>
+          <label class="field">
+            Логин
+            <input id="webdav-username" type="text" autocomplete="username" />
+          </label>
+          <label class="field">
+            Пароль
+            <input id="webdav-password" type="password" autocomplete="current-password" />
+          </label>
+          <div class="sync-buttons">
+            <button id="webdav-save" type="button" class="btn btn--secondary">Сохранить</button>
+            <button id="webdav-clear-data" type="button" class="btn btn--danger">Очистить локальные данные</button>
+          </div>
+          <div id="webdav-status" class="muted"></div>
+        </section>
+
+        <section class="card quick-add-card" id="quick-add-card" hidden>
+          <h2 id="quick-add-title">Быстрое добавление</h2>
+          <form id="operation-form" class="form-grid" autocomplete="off">
+            <label class="field field-wide">
+              Тип
+              <div id="operation-type-toggle" class="type-toggle" role="radiogroup" aria-label="Тип операции">
+                <button type="button" class="type-option chip active" data-type="income">Доход</button>
+                <button type="button" class="type-option chip" data-type="expense">Расход</button>
+              </div>
+              <input type="hidden" id="operation-type" value="income" required />
+            </label>
+            <label class="field field-wide">
+              Сумма
+              <input id="operation-amount" type="number" min="0.01" step="0.01" placeholder="0.00" required />
+            </label>
+            <label class="field field-wide">
+              Категория
+              <div class="category-picker" id="category-picker">
+                <input id="operation-category-input" type="text" autocomplete="off" placeholder="Выберите или найдите категорию" />
+                <button type="button" id="category-picker-toggle" class="btn btn--small picker-toggle">▾</button>
+              </div>
+              <input type="hidden" id="operation-category" required />
+              <div id="category-picker-popover" class="category-picker-popover" hidden>
+                <div id="category-picker-list" class="category-picker-list" aria-live="polite"></div>
+                <div class="category-picker-pager">
+                  <button type="button" id="category-picker-prev" class="btn btn--small">Назад</button>
+                  <span id="category-picker-page-info">Стр. 0 / 0</span>
+                  <button type="button" id="category-picker-next" class="btn btn--small">Вперёд</button>
+                </div>
+              </div>
+            </label>
+            <label class="field field-wide">
+              Описание
+              <textarea id="operation-description" rows="2" placeholder="Например: продуктовый магазин"></textarea>
+            </label>
+            <label class="field">
+              Дата
+              <input id="operation-date" type="text" inputmode="numeric" maxlength="10" autocomplete="off" placeholder="ДД.ММ.ГГГГ" required />
+            </label>
+            <button id="operation-submit" type="submit" class="btn btn--primary">Добавить операцию</button>
+          </form>
+        </section>
+
+        <section class="card">
+          <h2>Баланс</h2>
+          <div class="summary">
+            <article>
+              <p id="balance-title">Текущий остаток</p>
+              <strong id="balance-current">0 ₽</strong>
+            </article>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="search">
+            <label class="field">
+              Поиск
+              <input id="search-input" type="search" inputmode="search" placeholder="По описанию, категории или сумме" />
+            </label>
+            <div id="year-filters" class="year-filters" role="tablist" aria-label="Фильтр по году"></div>
+
+            <div class="chips" role="tablist" aria-label="Фильтр по типу">
+              <button type="button" class="chip active" data-type="all">Все</button>
+              <button type="button" class="chip" data-type="income">Доход</button>
+              <button type="button" class="chip" data-type="expense">Расход</button>
+            </div>
+          </div>
+
+          <div id="operations-list" class="operations-list" aria-live="polite"></div>
+
+          <div class="pagination">
+            <button id="prev-page" class="btn">Назад</button>
+            <span id="page-info">Стр. 0 / 0</span>
+            <button id="next-page" class="btn">Вперёд</button>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="app.js" defer></script>
+  </body>
+</html>

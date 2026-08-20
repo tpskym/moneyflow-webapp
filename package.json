@@ -1,0 +1,12 @@
+{
+  "name": "moneyflow-webapp",
+  "private": true,
+  "version": "1.0.0",
+  "description": "PWA приложение для учета расходов/доходов с локальным хранением и WebDAV sync.",
+  "scripts": {
+    "dev": "node dev-server.js",
+    "start": "npm run dev"
+  },
+  "author": "moneyflow-local",
+  "license": "MIT"
+}
