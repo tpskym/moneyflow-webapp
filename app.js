@@ -972,9 +972,9 @@
 
     const start = (state.currentPage - 1) * state.pageSize;
     const pageItems = visibleOperations.slice(start, start + state.pageSize);
-    const allBalance = enrichedOps.reduce((sum, operation) => sum + signedAmount(operation), 0);
+    const filteredBalance = filtered.reduce((sum, operation) => sum + signedAmount(operation), 0);
 
-    updateBalances(allBalance);
+    updateBalances(filteredBalance);
     renderYearFilters();
     renderCategoryOptions();
     renderOperationsList(pageItems);
