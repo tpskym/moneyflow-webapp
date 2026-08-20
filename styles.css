@@ -688,7 +688,8 @@ textarea:focus-visible {
 #google-client-id-field[hidden],
 .reader-invite[hidden],
 .cloud-recovery[hidden],
-.reader-access-management[hidden] {
+.reader-access-management[hidden],
+.reader-connection[hidden] {
   display: none !important;
 }
 
@@ -698,6 +699,20 @@ textarea:focus-visible {
   margin-top: 20px;
   padding-top: 18px;
   border-top: 1px solid var(--line);
+}
+
+.reader-connection {
+  display: grid;
+  gap: 12px;
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+
+.reader-connection p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.4;
 }
 
 .reader-access-management {

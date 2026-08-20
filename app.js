@@ -71,6 +71,9 @@
     readerEmailInput: document.getElementById("reader-email"),
     readerInviteButton: document.getElementById("reader-invite-button"),
     readerInviteStatus: document.getElementById("reader-invite-status"),
+    readerConnection: document.getElementById("reader-connection"),
+    readerConnectionShareButton: document.getElementById("reader-connection-share"),
+    readerConnectionStatus: document.getElementById("reader-connection-status"),
     readerAccessManagement: document.getElementById("reader-access-management"),
     readerAccessRefreshButton: document.getElementById("reader-access-refresh"),
     readerAccessList: document.getElementById("reader-access-list"),
@@ -199,6 +202,7 @@
     elements.cloudUploadButton?.addEventListener("click", onCloudUpload);
     elements.cloudDownloadButton?.addEventListener("click", onCloudDownload);
     elements.readerInviteButton?.addEventListener("click", onInviteReader);
+    elements.readerConnectionShareButton?.addEventListener("click", onShareReaderConnection);
     elements.readerAccessRefreshButton?.addEventListener("click", loadReaderPermissions);
     elements.readerAccessList?.addEventListener("click", onReaderAccessListClick);
     elements.syncToggleButton?.addEventListener("click", onSyncToggle);
@@ -1328,6 +1332,9 @@
     if (elements.readerInvite) {
       elements.readerInvite.hidden = !(hasClientId && hasFileId && state.syncSettings.accessMode === "writer");
     }
+    if (elements.readerConnection) {
+      elements.readerConnection.hidden = !(hasClientId && hasFileId && state.syncSettings.accessMode === "writer");
+    }
     if (elements.readerAccessManagement) {
       elements.readerAccessManagement.hidden = !(hasClientId && hasFileId && state.syncSettings.accessMode === "writer");
     }
@@ -1811,7 +1818,7 @@
       if (!response.ok) throw new Error(`Google Drive: ${response.status}`);
       elements.readerEmailInput.value = "";
       setSyncStatus(`Доступ на чтение и ссылка подключения отправлены: ${email}.`);
-      setReaderInviteStatus(`Письмо с доступом и ссылкой отправлено на ${email}.`, "success");
+      setReaderInviteStatus(`Доступ выдан для ${email}. Если письмо не придет, отправьте ссылку ниже вручную.`, "success");
     } catch (error) {
       setSyncStatus(`Не удалось открыть доступ: ${error?.message || "неизвестная ошибка"}`);
       setReaderInviteStatus(`Отправка не выполнена: ${error?.message || "неизвестная ошибка"}`, "error");
@@ -1825,6 +1832,60 @@
       elements.readerInviteStatus.dataset.state = state;
     } else {
       delete elements.readerInviteStatus.dataset.state;
+    }
+  }
+
+  async function onShareReaderConnection() {
+    if (!state.syncSettings.googleClientId || !state.syncSettings.googleFileId || state.syncSettings.accessMode !== "writer") {
+      setReaderConnectionStatus("Ссылка доступна на ведущем устройстве после первой выгрузки.", "error");
+      return;
+    }
+
+    const connectionLink = getReaderConnectionLink();
+    try {
+      if (typeof navigator.share === "function") {
+        await navigator.share({
+          title: "Подключение MoneyFlow",
+          text: "Откройте ссылку, затем нажмите «Синхронизировать» для подключения чтения данных MoneyFlow.",
+          url: connectionLink,
+        });
+        setReaderConnectionStatus("Ссылка передана читателю.", "success");
+        return;
+      }
+      await copyReaderConnectionLink(connectionLink);
+      setReaderConnectionStatus("Ссылка скопирована в буфер обмена. Отправьте её читателю любым способом.", "success");
+    } catch (error) {
+      if (error?.name === "AbortError") {
+        setReaderConnectionStatus("Отправка ссылки отменена.", "");
+        return;
+      }
+      setReaderConnectionStatus("Не удалось отправить ссылку. Попробуйте еще раз.", "error");
+    }
+  }
+
+  async function copyReaderConnectionLink(connectionLink) {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(connectionLink);
+      return;
+    }
+    const input = document.createElement("textarea");
+    input.value = connectionLink;
+    input.style.position = "fixed";
+    input.style.opacity = "0";
+    document.body.append(input);
+    input.select();
+    const copied = document.execCommand("copy");
+    input.remove();
+    if (!copied) throw new Error("copy_failed");
+  }
+
+  function setReaderConnectionStatus(message, state) {
+    if (!elements.readerConnectionStatus) return;
+    elements.readerConnectionStatus.textContent = message || "";
+    if (state) {
+      elements.readerConnectionStatus.dataset.state = state;
+    } else {
+      delete elements.readerConnectionStatus.dataset.state;
     }
   }
 
