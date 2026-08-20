@@ -1353,9 +1353,16 @@
     const hasClientId = Boolean(state.syncSettings.googleClientId);
     const hasFileId = Boolean(state.syncSettings.googleFileId);
     const isReadOnly = hasFileId && state.syncSettings.accessMode === "reader";
+    const isWriter = hasFileId && state.syncSettings.accessMode === "writer";
     const isNotWriter = hasFileId && state.syncSettings.accessMode !== "writer";
     const canUpload = hasClientId && (!hasFileId || !isNotWriter);
     const canSync = hasClientId;
+
+    if (elements.syncEditorTabButton) elements.syncEditorTabButton.hidden = isReadOnly;
+    if (elements.syncReaderTabButton) elements.syncReaderTabButton.hidden = isWriter;
+    if (isReadOnly) activeSyncTab = "reader";
+    if (isWriter) activeSyncTab = "editor";
+    renderSyncTabs();
 
     if (elements.readerLinkConnect) elements.readerLinkConnect.hidden = false;
 
