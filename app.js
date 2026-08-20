@@ -26,6 +26,7 @@
     categoryPickerNextBtn: document.getElementById("category-picker-next"),
     categoryPickerPageInfo: document.getElementById("category-picker-page-info"),
     amountInput: document.getElementById("operation-amount"),
+    amountDisplay: document.getElementById("operation-amount-display"),
     amountKeypad: document.getElementById("amount-keypad"),
     popularCategories: document.getElementById("popular-categories"),
     descriptionInput: document.getElementById("operation-description"),
@@ -323,11 +324,11 @@
     const action = button.dataset.amountAction;
     const currentValue = elements.amountInput.value || "";
     if (action === "clear") {
-      elements.amountInput.value = "";
+      setAmountValue("");
       return;
     }
     if (action === "backspace") {
-      elements.amountInput.value = currentValue.slice(0, -1);
+      setAmountValue(currentValue.slice(0, -1));
       return;
     }
 
@@ -335,13 +336,23 @@
     if (!key || !/^\d$|^\.$/.test(key)) return;
     if (key === ".") {
       if (currentValue.includes(".")) return;
-      elements.amountInput.value = currentValue ? `${currentValue}.` : "0.";
+      setAmountValue(currentValue ? `${currentValue}.` : "0.");
       return;
     }
 
     const decimalPart = currentValue.split(".")[1] || "";
     if (currentValue.includes(".") && decimalPart.length >= 2) return;
-    elements.amountInput.value = `${currentValue}${key}`;
+    setAmountValue(`${currentValue}${key}`);
+  }
+
+  function setAmountValue(value) {
+    const rawValue = String(value || "");
+    if (elements.amountInput) {
+      elements.amountInput.value = rawValue;
+    }
+    if (elements.amountDisplay) {
+      elements.amountDisplay.textContent = rawValue ? rawValue.replace(".", ",") : "0";
+    }
   }
 
   function onCategoryInputChange(event) {
@@ -556,7 +567,7 @@
     state.operationType = operation.type || "income";
     syncApplyTypeFromState();
 
-    elements.amountInput.value = String(round2(Number(operation.amount) || 0));
+    setAmountValue(String(round2(Number(operation.amount) || 0)));
     setOperationCategoryForQuickAdd(operation.categoryId, operation.categoryName);
     elements.descriptionInput.value = operation.description || "";
     setQuickAddDate(normalizeDateForInput(options.date || getOperationDateValue(operation)));
@@ -613,10 +624,6 @@
       elements.categoryPickerInput.readOnly = isViewMode || !state.categorySearchEditing;
     }
 
-    if (elements.amountInput) {
-      elements.amountInput.readOnly = true;
-    }
-
     if (elements.amountKeypad) {
       [...elements.amountKeypad.querySelectorAll("button")].forEach((button) => {
         button.disabled = isViewMode;
@@ -661,6 +668,7 @@
     if (!elements.form) return;
 
     elements.form.reset();
+    setAmountValue("");
     elements.form.classList.remove("is-readonly");
     setQuickAddMode("add");
     const fallbackCategory = elements.categorySelect?.value ? getCategoryById(elements.categorySelect.value) : null;
@@ -678,7 +686,6 @@
     const rawAmount = elements.amountInput.value.trim().replace(",", ".");
     const amount = Number(rawAmount);
     if (!Number.isFinite(amount) || amount <= 0) {
-      elements.amountInput.focus();
       return null;
     }
 
