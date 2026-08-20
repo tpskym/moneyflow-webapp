@@ -254,6 +254,8 @@
     });
     elements.dateFromInput?.addEventListener("input", onDateRangeInput);
     elements.dateToInput?.addEventListener("input", onDateRangeInput);
+    elements.dateFromInput?.addEventListener("blur", onDateRangeBlur);
+    elements.dateToInput?.addEventListener("blur", onDateRangeBlur);
     elements.chartsToggleButton?.addEventListener("click", onChartsToggle);
     elements.categoryFilterContainer?.addEventListener("click", onCategoryFilterClick);
     elements.readerLinkApplyButton?.addEventListener("click", onApplyReaderConnectionLink);
@@ -424,11 +426,21 @@
     if (state.activeMonthFilter.size !== 1) state.activeDayFilter.clear();
   }
 
-  function onDateRangeInput() {
+  function onDateRangeInput(event) {
+    onOperationDateInput(event);
     state.dateFrom = elements.dateFromInput?.value || "";
     state.dateTo = elements.dateToInput?.value || "";
     state.currentPage = 1;
     render();
+  }
+
+  function onDateRangeBlur(event) {
+    const target = event?.target;
+    if (target instanceof HTMLInputElement && target.value.trim()) {
+      const parsedDate = parseDateFromInput(target.value);
+      target.value = Number.isNaN(parsedDate.getTime()) ? "" : normalizeDateForInput(parsedDate);
+    }
+    onDateRangeInput();
   }
 
   function onChartsToggle() {
@@ -2466,7 +2478,7 @@
       return;
     }
     const appLink = `${location.origin}${location.pathname}`;
-    const shareMessage = `Установите M-Flow: ${appLink}\n\n1. Откройте первую ссылку и установите приложение.\n2. В приложении откройте настройки ⚙️, выберите вкладку «Читатель».\n3. Вставьте вторую ссылку в поле «Ссылка подключения» и нажмите «Подключиться по ссылке»:\n${connectionLink}\n\nДанные загрузятся автоматически.`;
+    const shareMessage = `Установите M-Flow: ${appLink}\n\n1. Откройте первую ссылку и установите приложение.\n2. В приложении откройте «Настройки синхронизации» в верхней части экрана, затем выберите вкладку «Читатель».\n3. Вставьте вторую ссылку в поле «Ссылка подключения» и нажмите «Подключиться по ссылке»:\n${connectionLink}\n\nДанные загрузятся автоматически.`;
     try {
       if (typeof navigator.share === "function") {
         await navigator.share({
