@@ -410,6 +410,9 @@
 
     const action = button.dataset.amountAction;
     const currentValue = elements.amountInput.value || "";
+    if (button.dataset.amountKey !== undefined && typeof navigator.vibrate === "function") {
+      navigator.vibrate(8);
+    }
     if (action === "clear") {
       setAmountValue("");
       return;
