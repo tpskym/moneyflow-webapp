@@ -60,6 +60,10 @@ body {
   width: 100%;
 }
 
+.sync-actions.is-readonly #cloud-download-top {
+  grid-column: 1 / -1;
+}
+
 .sync-toggle {
   padding: 0;
   width: 44px;

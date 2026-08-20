@@ -60,7 +60,6 @@
     instructionsCloseButton: document.getElementById("instructions-close"),
     syncGoogleClientIdInput: document.getElementById("google-client-id"),
     syncGoogleFileIdInput: document.getElementById("google-file-id"),
-    syncAccessModeInput: document.getElementById("cloud-access-mode"),
     syncSaveButton: document.getElementById("cloud-save"),
     cloudUploadTopButton: document.getElementById("cloud-upload-top"),
     cloudDownloadTopButton: document.getElementById("cloud-download-top"),
@@ -110,6 +109,7 @@
     state.syncSettings = sanitizeSyncSettings(readJson(STORAGE_KEYS.syncSettings, state.syncSettings));
 
     renderSyncSettingsForm();
+    updateCloudAccessUI();
     syncApplyTypeFromState();
     updateSyncSettingsVisibility(false);
     updateInstructionsVisibility(false);
@@ -283,6 +283,10 @@
   }
 
   function onQuickAddToggle() {
+    if (state.syncSettings.accessMode !== "writer" && state.syncSettings.googleFileId) {
+      setSyncStatus("На этом устройстве доступно только чтение. Нажмите «Синхронизировать» для загрузки данных.");
+      return;
+    }
     const shouldOpen = Boolean(elements.quickAddCard?.hidden);
     updateSyncSettingsVisibility(false);
     updateQuickAddVisibility(shouldOpen);
@@ -302,12 +306,14 @@
   }
 
   async function onSyncSave({ close = true } = {}) {
+    const googleFileId = (elements.syncGoogleFileIdInput?.value || "").trim();
     state.syncSettings = sanitizeSyncSettings({
       googleClientId: elements.syncGoogleClientIdInput?.value || "",
-      googleFileId: elements.syncGoogleFileIdInput?.value || "",
-      accessMode: elements.syncAccessModeInput?.value || "writer",
+      googleFileId,
+      accessMode: googleFileId === state.syncSettings.googleFileId ? state.syncSettings.accessMode : "unknown",
     });
     await persistSyncSettings();
+    updateCloudAccessUI();
     setSyncStatus("Настройки сохранены.");
     if (close) {
       updateSyncSettingsVisibility(false);
@@ -360,7 +366,7 @@
       updateSyncSettingsVisibility(true);
       return;
     }
-    if (state.syncSettings.accessMode !== "writer") {
+    if (state.syncSettings.accessMode !== "writer" && state.syncSettings.googleFileId) {
       updateSyncSettingsVisibility(true);
       setSyncStatus("Это устройство настроено только для чтения. Выгрузка недоступна.");
       return;
@@ -473,6 +479,10 @@
   function onAddOperation(event) {
     event.preventDefault();
     if (state.quickAddMode === "view") {
+      return;
+    }
+    if (state.syncSettings.accessMode !== "writer" && state.syncSettings.googleFileId) {
+      setSyncStatus("На этом устройстве доступно только чтение.");
       return;
     }
 
@@ -1251,6 +1261,18 @@
     elements.syncToggleButton.setAttribute("title", hiddenLabel);
   }
 
+  function updateCloudAccessUI() {
+    const isReadOnly = Boolean(state.syncSettings.googleFileId) && state.syncSettings.accessMode !== "writer";
+    [elements.cloudUploadTopButton, elements.cloudUploadButton].forEach((button) => {
+      if (button) button.hidden = isReadOnly;
+    });
+    if (elements.quickAddToggleButton) {
+      elements.quickAddToggleButton.hidden = isReadOnly;
+    }
+    elements.cloudDownloadTopButton?.closest(".sync-actions")?.classList.toggle("is-readonly", isReadOnly);
+    if (isReadOnly) updateQuickAddVisibility(false);
+  }
+
   function updateInstructionsVisibility(open) {
     if (!elements.instructionsCard || !elements.instructionsToggleButton) return;
 
@@ -1453,7 +1475,9 @@
     return {
       googleClientId: String((settings && settings.googleClientId) || "").trim(),
       googleFileId: String((settings && settings.googleFileId) || "").trim(),
-      accessMode: settings && settings.accessMode === "reader" ? "reader" : "writer",
+      accessMode: settings && ["writer", "reader", "unknown"].includes(settings.accessMode)
+        ? settings.accessMode
+        : "writer",
     };
   }
 
@@ -1592,11 +1616,10 @@
       );
   }
   function renderSyncSettingsForm() {
-    if (!elements.syncGoogleClientIdInput || !elements.syncGoogleFileIdInput || !elements.syncAccessModeInput) return;
+    if (!elements.syncGoogleClientIdInput || !elements.syncGoogleFileIdInput) return;
 
     elements.syncGoogleClientIdInput.value = state.syncSettings.googleClientId;
     elements.syncGoogleFileIdInput.value = state.syncSettings.googleFileId;
-    elements.syncAccessModeInput.value = state.syncSettings.accessMode;
   }
 
   function setSyncStatus(message) {
@@ -1670,8 +1693,10 @@
       const metadata = await response.json();
       if (!state.syncSettings.googleFileId && metadata?.id) {
         state.syncSettings.googleFileId = metadata.id;
+        state.syncSettings.accessMode = "writer";
         await persistSyncSettings();
         renderSyncSettingsForm();
+        updateCloudAccessUI();
       }
       setSyncStatus("Полный файл успешно выгружен в Google Drive.");
     } catch (error) {
@@ -1682,10 +1707,15 @@
   async function downloadFromGoogleDrive() {
     setSyncStatus("Открываю вход Google и загружаю файл...");
     try {
-      const scope = state.syncSettings.accessMode === "reader"
-        ? "https://www.googleapis.com/auth/drive.readonly"
-        : "https://www.googleapis.com/auth/drive.file";
-      const accessToken = await getGoogleAccessToken(scope);
+      const accessToken = await getGoogleAccessToken("https://www.googleapis.com/auth/drive.readonly");
+      const permissionResponse = await fetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(state.syncSettings.googleFileId)}?fields=capabilities(canEdit)`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (!permissionResponse.ok) throw new Error(`Google Drive: ${permissionResponse.status}`);
+      const permissions = await permissionResponse.json();
+      state.syncSettings.accessMode = permissions?.capabilities?.canEdit ? "writer" : "reader";
+      await persistSyncSettings();
+      updateCloudAccessUI();
       const response = await fetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(state.syncSettings.googleFileId)}?alt=media`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });

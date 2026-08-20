@@ -13,7 +13,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icons/moneyflow.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="icons/moneyflow.svg" />
-    <link rel="stylesheet" href="styles.css?v=53" />
+    <link rel="stylesheet" href="styles.css?v=54" />
   </head>
   <body>
     <div class="page">
@@ -49,8 +49,8 @@
           <button type="button" id="cloud-upload-top" class="btn btn--small sync-button-with-icon" aria-label="Выгрузить в облако" title="Выгрузить в облако">
             <span>Выгрузить</span>
           </button>
-          <button type="button" id="cloud-download-top" class="btn btn--small sync-button-with-icon" aria-label="Загрузить из облака" title="Загрузить из облака">
-            <span>Загрузить</span>
+          <button type="button" id="cloud-download-top" class="btn btn--small sync-button-with-icon" aria-label="Синхронизировать с облаком" title="Синхронизировать с облаком">
+            <span>Синхронизировать</span>
           </button>
           <button
             type="button"
@@ -72,8 +72,8 @@
             <li>В разделе APIs &amp; Services включите Google Drive API.</li>
             <li>В Credentials создайте OAuth Client ID типа Web application.</li>
             <li>Добавьте в Authorized JavaScript origins адрес <code>https://tpskym.github.io</code>.</li>
-            <li>Скопируйте Client ID в настройки приложения. На устройстве, где ведёте учёт, оставьте режим «Веду данные» и нажмите «Выгрузить».</li>
-            <li>Для другого устройства откройте файл в Google Drive, дайте его аккаунту доступ, скопируйте ID файла из настроек приложения и выберите «Только чтение».</li>
+            <li>Скопируйте Client ID в настройки приложения. На устройстве, где ведёте учёт, нажмите «Выгрузить».</li>
+            <li>Для другого устройства откройте файл в Google Drive, дайте его аккаунту доступ и скопируйте ID файла в настройки приложения. После «Синхронизировать» режим определится автоматически.</li>
           </ol>
           <button id="instructions-close" type="button" class="btn btn--secondary">Закрыть инструкцию</button>
         </section>
@@ -88,20 +88,13 @@
             ID файла в Google Drive
             <input id="google-file-id" type="text" autocomplete="off" placeholder="Будет создан при первой выгрузке" />
           </label>
-          <label class="field">
-            Режим устройства
-            <select id="cloud-access-mode">
-              <option value="writer">Веду данные: загрузка и выгрузка</option>
-              <option value="reader">Только чтение из облака</option>
-            </select>
-          </label>
           <div class="sync-buttons">
             <button id="cloud-save" type="button" class="btn btn--secondary">Сохранить настройки</button>
-            <button id="cloud-download" type="button" class="btn btn--secondary">Загрузить из облака</button>
+            <button id="cloud-download" type="button" class="btn btn--secondary">Синхронизировать</button>
             <button id="cloud-upload" type="button" class="btn">Выгрузить в облако</button>
             <button id="cloud-clear-data" type="button" class="btn btn--danger">Очистить локальные данные</button>
           </div>
-          <div class="muted">Выгрузка полностью заменяет файл в облаке. Загрузка полностью заменяет данные на этом устройстве.</div>
+          <div class="muted">Режим устройства определяется Google Drive при синхронизации. Выгрузка полностью заменяет файл в облаке.</div>
           <div id="cloud-status" class="muted" aria-live="polite"></div>
         </section>
 
@@ -226,6 +219,6 @@
     </div>
 
     <script src="https://accounts.google.com/gsi/client" async></script>
-    <script src="app.js?v=53" defer></script>
+    <script src="app.js?v=54" defer></script>
   </body>
 </html>
