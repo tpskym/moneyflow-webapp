@@ -26,6 +26,8 @@
     categoryPickerNextBtn: document.getElementById("category-picker-next"),
     categoryPickerPageInfo: document.getElementById("category-picker-page-info"),
     amountInput: document.getElementById("operation-amount"),
+    amountKeypad: document.getElementById("amount-keypad"),
+    popularCategories: document.getElementById("popular-categories"),
     descriptionInput: document.getElementById("operation-description"),
     operationDateInput: document.getElementById("operation-date"),
     balanceCurrent: document.getElementById("balance-current"),
@@ -74,6 +76,7 @@
     pageSize: 20,
     categorySearchText: "",
     categoryCurrentPage: 1,
+    categorySearchEditing: false,
     quickAddMode: "add",
     quickAddSourceOperationId: "",
   };
@@ -130,6 +133,7 @@
   function bindEvents() {
     elements.form.addEventListener("submit", onAddOperation);
     elements.quickAddDismissButton?.addEventListener("click", onQuickAddDismiss);
+    elements.amountKeypad?.addEventListener("click", onAmountKeypadClick);
     if (elements.typeToggle) {
       elements.typeToggle.addEventListener("click", onTypeToggleClick);
     }
@@ -141,6 +145,7 @@
     elements.categoryPickerPrevBtn.addEventListener("click", () => goCategoryPage(-1));
     elements.categoryPickerNextBtn.addEventListener("click", () => goCategoryPage(1));
     elements.categoryPickerList.addEventListener("click", onCategoryPickerSelect);
+    elements.popularCategories?.addEventListener("click", onPopularCategoryClick);
     elements.searchToggleButton?.addEventListener("click", onSearchToggle);
     elements.searchInput.addEventListener("input", onSearchInput);
     elements.yearFilterContainer?.addEventListener("click", onYearFilterClick);
@@ -309,6 +314,27 @@
       return;
     }
     syncNowWithWebDav();
+  }
+
+  function onAmountKeypadClick(event) {
+    if (state.quickAddMode === "view") return;
+    const button = event.target.closest("[data-amount-key], [data-amount-action]");
+    if (!button || !elements.amountInput) return;
+
+    const action = button.dataset.amountAction;
+    const currentValue = elements.amountInput.value || "";
+    if (action === "clear") {
+      elements.amountInput.value = "";
+      return;
+    }
+    if (action === "backspace") {
+      elements.amountInput.value = currentValue.slice(0, -1);
+      return;
+    }
+
+    const digit = button.dataset.amountKey;
+    if (!digit || !/^\d$/.test(digit)) return;
+    elements.amountInput.value = `${currentValue}${digit}`;
   }
 
   function onCategoryInputChange(event) {
@@ -566,7 +592,6 @@
     const readOnlyInputs = [
       elements.amountInput,
       elements.operationDateInput,
-      elements.categoryPickerInput,
       elements.descriptionInput,
     ];
     readOnlyInputs.forEach((element) => {
@@ -577,6 +602,22 @@
 
     if (elements.categoryPickerToggle) {
       elements.categoryPickerToggle.disabled = isViewMode;
+    }
+
+    if (elements.categoryPickerInput) {
+      elements.categoryPickerInput.readOnly = isViewMode || !state.categorySearchEditing;
+    }
+
+    if (elements.amountKeypad) {
+      [...elements.amountKeypad.querySelectorAll("button")].forEach((button) => {
+        button.disabled = isViewMode;
+      });
+    }
+
+    if (elements.popularCategories) {
+      [...elements.popularCategories.querySelectorAll("button")].forEach((button) => {
+        button.disabled = isViewMode;
+      });
     }
 
     if (elements.typeToggle) {
@@ -1259,6 +1300,7 @@
   }
 
   function renderCategoryOptions() {
+    renderPopularCategories();
     const result = getCategoryPickerSlice();
     const searchValue = (state.categorySearchText || "").trim();
     const normalizedSearchValue = normalizeTextForSearch(searchValue);
@@ -1271,10 +1313,18 @@
         </button>
       `
       : "";
+    const startCategorySearchOption = state.categorySearchEditing
+      ? ""
+      : `
+        <button type="button" class="category-picker-option category-picker-option--add" data-action="start-category-search">
+          <span class="category-picker-add-mark">+</span>
+          <span>Найти или добавить категорию</span>
+        </button>
+      `;
 
     if (!result.totalItems) {
       if (!searchValue) {
-        elements.categoryPickerList.innerHTML = `<div class="empty">Категории не найдены</div>`;
+        elements.categoryPickerList.innerHTML = `${startCategorySearchOption}<div class="empty">Категории не найдены</div>`;
       } else if (addCategoryOption) {
         elements.categoryPickerList.innerHTML = addCategoryOption;
       } else {
@@ -1296,8 +1346,32 @@
         `;
       })
       .join("");
-    elements.categoryPickerList.innerHTML = `${addCategoryOption}${items}`;
+    elements.categoryPickerList.innerHTML = `${startCategorySearchOption}${addCategoryOption}${items}`;
     updateCategoryPickerPager(result.totalItems, result.totalPages);
+  }
+
+  function renderPopularCategories() {
+    if (!elements.popularCategories) return;
+
+    const useCount = new Map();
+    for (const operation of state.operations) {
+      if (!operation?.categoryId) continue;
+      useCount.set(operation.categoryId, (useCount.get(operation.categoryId) || 0) + 1);
+    }
+
+    const popular = state.categories
+      .filter((category) => (useCount.get(category.id) || 0) > 0)
+      .sort((left, right) => {
+        const countDiff = (useCount.get(right.id) || 0) - (useCount.get(left.id) || 0);
+        return countDiff || normalizeTextForSearch(left.name).localeCompare(normalizeTextForSearch(right.name), "ru");
+      })
+      .slice(0, 6);
+
+    elements.popularCategories.hidden = popular.length === 0;
+    const disabled = state.quickAddMode === "view" ? " disabled" : "";
+    elements.popularCategories.innerHTML = popular
+      .map((category) => `<button type="button" class="chip popular-category" data-popular-category-id="${escapeHtml(category.id)}"${disabled}>${escapeHtml(category.name)}</button>`)
+      .join("");
   }
 
   function getCategoryId(name) {
@@ -1524,6 +1598,10 @@
       addCategoryFromPickerSearch();
       return;
     }
+    if (button.dataset.action === "start-category-search") {
+      startCategorySearch();
+      return;
+    }
 
     const categoryId = button.getAttribute("data-category-id");
     if (!categoryId) return;
@@ -1531,8 +1609,29 @@
     closeCategoryPicker();
   }
 
+  function startCategorySearch() {
+    if (state.quickAddMode === "view" || !elements.categoryPickerInput) return;
+    state.categorySearchEditing = true;
+    elements.categorySelect.value = "";
+    elements.categoryPickerInput.readOnly = false;
+    elements.categoryPickerInput.value = "";
+    state.categorySearchText = "";
+    state.categoryCurrentPage = 1;
+    renderCategoryOptions();
+    elements.categoryPickerInput.focus();
+  }
+
+  function onPopularCategoryClick(event) {
+    if (state.quickAddMode === "view") return;
+    const button = event.target.closest("[data-popular-category-id]");
+    const categoryId = button?.getAttribute("data-popular-category-id");
+    if (!categoryId) return;
+    setCategorySelection(categoryId);
+    closeCategoryPicker();
+  }
+
   function onOutsideCategoryPickerClick(event) {
-    if (!state.categories.length || !elements.categoryPickerPopover || !elements.categoryPicker) return;
+    if (!elements.categoryPickerPopover || !elements.categoryPicker) return;
     if (!elements.categoryPickerPopover.hidden && !elements.categoryPicker.contains(event.target) && !elements.categoryPickerPopover.contains(event.target)) {
       closeCategoryPicker();
     }
@@ -1551,15 +1650,29 @@
     if (elements.form && elements.form.classList.contains("is-readonly")) return;
     if (!elements.categoryPickerPopover) return;
     elements.categoryPickerPopover.hidden = false;
-    state.categorySearchText = (elements.categoryPickerInput ? elements.categoryPickerInput.value : "").trim();
+    state.categorySearchText = state.categorySearchEditing
+      ? (elements.categoryPickerInput?.value || "").trim()
+      : "";
     state.categoryCurrentPage = 1;
     renderCategoryOptions();
-    elements.categoryPickerInput.focus();
+    if (state.categorySearchEditing) {
+      elements.categoryPickerInput?.focus();
+    }
   }
 
   function closeCategoryPicker() {
     if (!elements.categoryPickerPopover) return;
     elements.categoryPickerPopover.hidden = true;
+    if (!state.categorySearchEditing) return;
+
+    state.categorySearchEditing = false;
+    state.categorySearchText = "";
+    state.categoryCurrentPage = 1;
+    if (elements.categoryPickerInput) {
+      elements.categoryPickerInput.readOnly = true;
+      const selectedCategory = getCategoryById(elements.categorySelect?.value);
+      elements.categoryPickerInput.value = selectedCategory?.name || "";
+    }
   }
 
   function goCategoryPage(delta) {
@@ -1609,8 +1722,10 @@
     const category = state.categories.find((item) => item.id === categoryId);
     if (!category) return;
 
+    state.categorySearchEditing = false;
     elements.categorySelect.value = category.id;
     elements.categoryPickerInput.value = category.name;
+    elements.categoryPickerInput.readOnly = true;
   }
 
   function ensureCategorySelection() {

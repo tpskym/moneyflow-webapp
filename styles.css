@@ -211,6 +211,30 @@ h1 {
   align-items: center;
 }
 
+.amount-keypad {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.amount-keypad .btn {
+  min-height: 42px;
+  padding: 0 8px;
+}
+
+.popular-categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-top: 2px;
+}
+
+.popular-category {
+  min-height: 36px;
+  padding: 7px 11px;
+  font-size: 13px;
+}
+
 .picker-toggle {
   width: 54px;
   min-height: 46px;
