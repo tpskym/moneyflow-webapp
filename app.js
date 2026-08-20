@@ -628,6 +628,12 @@
       const operation = state.operations.find((item) => item.id === operationId);
       if (!operation) return;
 
+      if (state.syncSettings.accessMode === "reader" && action !== "view") {
+        closeAllOperationMenus();
+        openQuickAddWithOperation(operation, { mode: "view", date: getOperationDateValue(operation) });
+        return;
+      }
+
       if (action === "copy") {
         closeAllOperationMenus();
         openQuickAddWithOperation(operation, { mode: "copy", date: getOperationDateValue(operation) });
@@ -714,7 +720,8 @@
     updateSyncSettingsVisibility(false);
     updateQuickAddVisibility(true);
     closeCategoryPicker();
-    const mode = options.mode || "add";
+    const requestedMode = options.mode || "add";
+    const mode = state.syncSettings.accessMode === "reader" ? "view" : requestedMode;
     const sourceOperationId = options.sourceOperationId || "";
     setQuickAddMode(mode, sourceOperationId);
     state.operationType = operation.type || "income";
@@ -1446,6 +1453,7 @@
       const category = operation.categoryName || "Без категории";
       const description = operation.description || "";
       const menuActionLabel = `Действия для операции "${escapeHtml(category)}"`;
+      const isReaderDevice = state.syncSettings.accessMode === "reader";
 
       if (dayLabel !== lastDay) {
         rows.push(`<div class="operation-day">${escapeHtml(dayLabel)}</div>`);
@@ -1454,21 +1462,23 @@
 
       rows.push(`
         <article class="operation" data-operation-id="${escapeHtml(operation.id)}">
-          <button
-            type="button"
-            class="operation-menu-trigger"
-            data-operation-menu-trigger="${operation.id}"
-            title="Действия"
-            aria-label="${menuActionLabel}"
-          >
-            ⋯
-          </button>
-          <div class="operation-menu" role="menu" aria-label="Меню операции">
-            <button type="button" class="operation-menu-item" data-operation-action="copy" role="menuitem">Копировать</button>
-            <button type="button" class="operation-menu-item" data-operation-action="edit" role="menuitem">Изменить</button>
-            <button type="button" class="operation-menu-item" data-operation-action="view" role="menuitem">Просмотреть</button>
-            <button type="button" class="operation-menu-item" data-operation-action="delete" role="menuitem">Удалить</button>
-          </div>
+          ${isReaderDevice ? "" : `
+            <button
+              type="button"
+              class="operation-menu-trigger"
+              data-operation-menu-trigger="${operation.id}"
+              title="Действия"
+              aria-label="${menuActionLabel}"
+            >
+              ⋯
+            </button>
+            <div class="operation-menu" role="menu" aria-label="Меню операции">
+              <button type="button" class="operation-menu-item" data-operation-action="copy" role="menuitem">Копировать</button>
+              <button type="button" class="operation-menu-item" data-operation-action="edit" role="menuitem">Изменить</button>
+              <button type="button" class="operation-menu-item" data-operation-action="view" role="menuitem">Просмотреть</button>
+              <button type="button" class="operation-menu-item" data-operation-action="delete" role="menuitem">Удалить</button>
+            </div>
+          `}
           <div class="operation-title">
             <div class="operation-category"><strong>${escapeHtml(category)}</strong></div>
             ${description ? `<div class="operation-description">${escapeHtml(description)}</div>` : ""}
