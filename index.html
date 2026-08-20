@@ -13,7 +13,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icons/moneyflow.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="icons/moneyflow.svg" />
-    <link rel="stylesheet" href="styles.css?v=94" />
+    <link rel="stylesheet" href="styles.css?v=95" />
   </head>
   <body>
     <div class="page">
@@ -21,9 +21,23 @@
         <div class="header-heading">
           <p class="eyebrow">Личный счёт</p>
           <h1>MoneyFlow</h1>
-          <p class="subtitle">Учет доходов и расходов <span class="app-version">v94</span></p>
+          <p class="subtitle">Учет доходов и расходов <span class="app-version">v95</span></p>
         </div>
         <div class="header-tools">
+          <button
+            type="button"
+            id="amounts-visibility-toggle"
+            class="btn btn--small btn--secondary sync-toggle amounts-visibility-toggle"
+            aria-pressed="false"
+            aria-label="Скрыть суммы"
+            title="Скрыть суммы"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"></path><circle cx="12" cy="12" r="2.5"></circle></svg>
+            <span class="sr-only">Скрыть суммы</span>
+          </button>
+          <button
+            type="button"
+            id="instructions-toggle"
             class="btn btn--small btn--secondary sync-toggle"
             aria-label="Открыть инструкцию"
             title="Как начать"
@@ -31,7 +45,6 @@
             <span class="btn-icon" aria-hidden="true">?</span>
             <span class="sr-only">Как начать</span>
           </button>
-
           <button
             type="button"
             id="sync-settings-toggle"
@@ -300,6 +313,6 @@
     <div id="app-notice" class="app-notice" role="status" aria-live="polite" hidden></div>
 
     <script src="https://accounts.google.com/gsi/client" async></script>
-    <script src="app.js?v=94" defer></script>
+    <script src="app.js?v=95" defer></script>
   </body>
 </html>
