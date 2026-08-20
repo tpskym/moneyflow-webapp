@@ -3,6 +3,7 @@
     operations: "moneyflow-operations-v1",
     categories: "moneyflow-categories-v1",
     syncSettings: "moneyflow-sync-settings-v1",
+    amountsHidden: "moneyflow-amounts-hidden-v1",
   };
 
   const DEFAULT_CATEGORIES = [];
@@ -55,7 +56,7 @@
     operationsList: document.getElementById("operations-list"),
     chipContainer: document.querySelector(".chips"),
     balanceTitle: document.getElementById("balance-title"),
-    loadMoreOperationsButton: document.getElementById("load-more-operations"),
+    operationsLoadSentinel: document.getElementById("operations-load-sentinel"),
     yearFilterContainer: document.getElementById("year-filters"),
     monthFilterContainer: document.getElementById("month-filters"),
     dayFilterContainer: document.getElementById("day-filters"),
@@ -68,6 +69,7 @@
     instructionsToggleButton: document.getElementById("instructions-toggle"),
     instructionsCard: document.getElementById("instructions-section"),
     instructionsCloseButton: document.getElementById("instructions-close"),
+    amountsVisibilityToggleButton: document.getElementById("amounts-visibility-toggle"),
     syncGoogleClientIdInput: document.getElementById("google-client-id"),
     syncGoogleFileIdInput: document.getElementById("google-file-id"),
     syncTabs: document.getElementById("sync-tabs"),
@@ -119,6 +121,7 @@
       googleAccountEmail: "",
       lastSuccessfulSyncAt: "",
     },
+    amountsHidden: false,
     searchText: "",
     activeTypeFilter: "all",
     activeYearFilter: new Set(),
@@ -147,6 +150,7 @@
   let chartsOpen = false;
   let periodDrag = null;
   let ignorePeriodClick = false;
+  let operationsLoadObserver = null;
 
   async function main() {
     enableLiveReload();
@@ -154,6 +158,7 @@
     state.operations = sanitizeOperations(persistedOperations);
     state.categories = sanitizeCategories(readJson(STORAGE_KEYS.categories, DEFAULT_CATEGORIES));
     state.syncSettings = sanitizeSyncSettings(readJson(STORAGE_KEYS.syncSettings, state.syncSettings));
+    state.amountsHidden = readJson(STORAGE_KEYS.amountsHidden, false) === true;
     const connectionSettings = consumeCloudConnectionSettings();
     if (connectionSettings) {
       state.syncSettings = sanitizeSyncSettings({ ...state.syncSettings, ...connectionSettings, accessMode: "unknown" });
@@ -258,6 +263,7 @@
     elements.syncToggleButton?.addEventListener("click", onSyncToggle);
     elements.instructionsToggleButton?.addEventListener("click", onInstructionsToggle);
     elements.instructionsCloseButton?.addEventListener("click", () => updateInstructionsVisibility(false));
+    elements.amountsVisibilityToggleButton?.addEventListener("click", onAmountsVisibilityToggle);
     elements.quickAddToggleButton?.addEventListener("click", onQuickAddToggle);
     elements.operationDateInput?.addEventListener("input", onOperationDateInput);
     elements.operationDateInput?.addEventListener("blur", onOperationDateInputBlur);
@@ -793,13 +799,41 @@
     setAmountValue(`${currentValue}${key}`);
   }
 
+  function shouldHideQuickAddAmount() {
+    return state.amountsHidden && !["copy", "edit"].includes(state.quickAddMode);
+  }
+
+  function onAmountsVisibilityToggle() {
+    state.amountsHidden = !state.amountsHidden;
+    writeJson(STORAGE_KEYS.amountsHidden, state.amountsHidden);
+    updateAmountsVisibilityToggle();
+    setAmountValue(elements.amountInput?.value || "");
+    render();
+  }
+
+  function updateAmountsVisibilityToggle() {
+    const button = elements.amountsVisibilityToggleButton;
+    if (!button) return;
+    const label = state.amountsHidden ? "Показать суммы" : "Скрыть суммы";
+    const icon = state.amountsHidden
+      ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3l18 18"></path><path d="M10.6 10.6a2 2 0 0 0 2.8 2.8"></path><path d="M9.9 5.1A11 11 0 0 1 12 5c6.5 0 10 7 10 7a19 19 0 0 1-3.1 3.9"></path><path d="M6.6 6.6C3.8 8.5 2 12 2 12s3.5 7 10 7c1.1 0 2.1-.2 3-.5"></path></svg>'
+      : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"></path><circle cx="12" cy="12" r="2.5"></circle></svg>';
+    button.setAttribute("aria-pressed", String(state.amountsHidden));
+    button.setAttribute("aria-label", label);
+    button.setAttribute("title", label);
+    button.classList.toggle("is-active", state.amountsHidden);
+    button.innerHTML = `${icon}<span class="sr-only">${label}</span>`;
+  }
+
   function setAmountValue(value) {
     const rawValue = String(value || "");
     if (elements.amountInput) {
       elements.amountInput.value = rawValue;
     }
     if (elements.amountDisplay) {
-      elements.amountDisplay.textContent = rawValue ? rawValue.replace(".", ",") : "0";
+      elements.amountDisplay.textContent = shouldHideQuickAddAmount()
+        ? "•••••"
+        : (rawValue ? rawValue.replace(".", ",") : "0");
     }
   }
 
@@ -1689,9 +1723,11 @@
     const legend = entries.map((entry) => {
       const color = entry.category?.color || "#64748b";
       const percent = Math.round((entry.amount / total) * 100);
-      return `<div class="chart-legend-item"><span class="chart-dot" style="background:${color}"></span><span>${escapeHtml(entry.name)}</span><strong>${formatMoney(entry.amount)} ₽ · ${percent}%</strong></div>`;
+      const summary = state.amountsHidden ? "•••••" : `${formatMoney(entry.amount)} ₽ · ${percent}%`;
+      return `<div class="chart-legend-item"><span class="chart-dot" style="background:${color}"></span><span>${escapeHtml(entry.name)}</span><strong>${summary}</strong></div>`;
     }).join("");
-    container.innerHTML = `<div class="chart-donut" style="background:conic-gradient(${segments.join(",")})"><span>${formatMoney(total)} ₽</span></div><div class="chart-legend">${legend}</div>`;
+    const chartTotal = state.amountsHidden ? "•••••" : `${formatMoney(total)} ₽`;
+    container.innerHTML = `<div class="chart-donut" style="background:conic-gradient(${segments.join(",")})"><span>${chartTotal}</span></div><div class="chart-legend">${legend}</div>`;
   }
 
   function syncApplyTypeFromState() {
@@ -1712,7 +1748,7 @@
       const selectedYears = getActiveYearFilterLabel();
       elements.balanceTitle.textContent = selectedYears ? `Текущий остаток (${selectedYears})` : "Текущий остаток";
     }
-    elements.balanceCurrent.textContent = `${formatMoney(filteredBalance)} ₽`;
+    elements.balanceCurrent.textContent = state.amountsHidden ? "•••••" : `${formatMoney(filteredBalance)} ₽`;
   }
 
   function getActiveYearFilterLabel() {
@@ -1840,8 +1876,20 @@
   }
 
   function updatePager(totalItems, totalPages) {
-    if (!elements.loadMoreOperationsButton) return;
-    elements.loadMoreOperationsButton.hidden = totalItems === 0 || state.currentPage >= totalPages;
+    const sentinel = elements.operationsLoadSentinel;
+    if (!sentinel) return;
+    const canLoadMore = totalItems > 0 && state.currentPage < totalPages;
+    sentinel.hidden = !canLoadMore;
+    operationsLoadObserver?.disconnect();
+    operationsLoadObserver = null;
+    if (!canLoadMore || !("IntersectionObserver" in window)) return;
+    operationsLoadObserver = new IntersectionObserver((entries) => {
+      if (!entries.some((entry) => entry.isIntersecting)) return;
+      operationsLoadObserver?.disconnect();
+      operationsLoadObserver = null;
+      loadMoreOperations();
+    }, { rootMargin: "0px" });
+    operationsLoadObserver.observe(sentinel);
   }
 
   function renderOperationsList(operations) {
@@ -1896,7 +1944,7 @@
             ${description ? `<div class="operation-description">${escapeHtml(description)}</div>` : ""}
           </div>
           <div class="operation-amount ${amountClass}">
-            ${signChar} ${formatMoney(visibleAmount)} ₽
+            ${state.amountsHidden ? "•••••" : `${signChar} ${formatMoney(visibleAmount)} ₽`}
           </div>
         </article>
       `);

@@ -1281,3 +1281,24 @@ textarea:focus-visible {
     max-width: 100%;
   }
 }
+
+.amounts-visibility-toggle svg {
+  width: 21px;
+  height: 21px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.amounts-visibility-toggle.is-active {
+  color: #a5f3fc;
+  border-color: rgba(103, 232, 249, 0.78);
+  background: rgba(8, 145, 178, 0.26);
+}
+
+.operations-load-sentinel {
+  width: 100%;
+  height: 1px;
+}
