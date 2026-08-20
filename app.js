@@ -1469,7 +1469,11 @@
 
       rows.push(`
         <article class="operation" data-operation-id="${escapeHtml(operation.id)}">
-          ${isReaderDevice ? "" : `
+          ${isReaderDevice ? `
+            <button type="button" class="operation-view-trigger" title="Просмотреть" aria-label="Просмотреть операцию &quot;${escapeHtml(category)}&quot;">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.7"/></svg>
+            </button>
+          ` : `
             <button
               type="button"
               class="operation-menu-trigger"

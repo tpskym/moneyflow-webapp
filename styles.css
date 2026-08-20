@@ -875,6 +875,36 @@ textarea:focus-visible {
   color: var(--text);
 }
 
+.operation-view-trigger {
+  grid-area: menu;
+  justify-self: stretch;
+  align-self: stretch;
+  min-height: 100%;
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid rgba(103, 232, 249, 0.36);
+  background: linear-gradient(145deg, rgba(8, 145, 178, 0.3), rgba(30, 64, 175, 0.26));
+  color: #a5f3fc;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+}
+
+.operation-view-trigger svg {
+  width: 25px;
+  height: 25px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+}
+
+.operation-view-trigger:hover {
+  color: #f8fafc;
+  border-color: #67e8f9;
+}
+
 .operation-menu {
   position: absolute;
   left: 0;
