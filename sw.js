@@ -1,10 +1,11 @@
-const CACHE_NAME = "moneyflow-v1";
+const CACHE_NAME = "moneyflow-v2";
 const ASSETS = [
-  "/",
-  "/index.html",
-  "/styles.css",
-  "/app.js",
-  "/manifest.webmanifest",
+  "./",
+  "./index.html",
+  "./styles.css",
+  "./app.js",
+  "./manifest.webmanifest",
+  "./icons/moneyflow.svg",
 ];
 
 self.addEventListener("install", (event) => {
@@ -52,7 +53,7 @@ self.addEventListener("fetch", (event) => {
           return response;
         })
         .catch(() => {
-          return caches.match("/index.html");
+          return caches.match("./index.html");
         });
     })
   );
