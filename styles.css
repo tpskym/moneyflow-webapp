@@ -476,6 +476,10 @@ textarea:focus-visible {
   font-weight: 600;
 }
 
+.btn[hidden] {
+  display: none !important;
+}
+
 .btn--primary {
   background: linear-gradient(120deg, #0ea5e9, #6366f1);
   border: none;
