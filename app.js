@@ -71,6 +71,10 @@
     readerEmailInput: document.getElementById("reader-email"),
     readerInviteButton: document.getElementById("reader-invite-button"),
     readerInviteStatus: document.getElementById("reader-invite-status"),
+    readerAccessManagement: document.getElementById("reader-access-management"),
+    readerAccessRefreshButton: document.getElementById("reader-access-refresh"),
+    readerAccessList: document.getElementById("reader-access-list"),
+    readerAccessStatus: document.getElementById("reader-access-status"),
     syncStatus: document.getElementById("cloud-status"),
     clearDataButton: document.getElementById("cloud-clear-data"),
     quickAddToggleButton: document.getElementById("quick-add-toggle"),
@@ -102,6 +106,7 @@
     categorySearchEditing: false,
     quickAddMode: "add",
     quickAddSourceOperationId: "",
+    readerPermissions: [],
   };
 
   let searchDebounce;
@@ -194,6 +199,8 @@
     elements.cloudUploadButton?.addEventListener("click", onCloudUpload);
     elements.cloudDownloadButton?.addEventListener("click", onCloudDownload);
     elements.readerInviteButton?.addEventListener("click", onInviteReader);
+    elements.readerAccessRefreshButton?.addEventListener("click", loadReaderPermissions);
+    elements.readerAccessList?.addEventListener("click", onReaderAccessListClick);
     elements.syncToggleButton?.addEventListener("click", onSyncToggle);
     elements.instructionsToggleButton?.addEventListener("click", onInstructionsToggle);
     elements.instructionsCloseButton?.addEventListener("click", () => updateInstructionsVisibility(false));
@@ -1321,6 +1328,9 @@
     if (elements.readerInvite) {
       elements.readerInvite.hidden = !(hasClientId && hasFileId && state.syncSettings.accessMode === "writer");
     }
+    if (elements.readerAccessManagement) {
+      elements.readerAccessManagement.hidden = !(hasClientId && hasFileId && state.syncSettings.accessMode === "writer");
+    }
     const syncActions = elements.cloudDownloadTopButton?.closest(".sync-actions");
     syncActions?.classList.toggle("is-readonly", isReadOnly);
     syncActions?.classList.toggle("has-single-cloud-action", (canUpload ? 1 : 0) + (isReadOnly ? 1 : 0) === 1);
@@ -1815,6 +1825,91 @@
       elements.readerInviteStatus.dataset.state = state;
     } else {
       delete elements.readerInviteStatus.dataset.state;
+    }
+  }
+
+  async function loadReaderPermissions() {
+    if (!state.syncSettings.googleFileId || state.syncSettings.accessMode !== "writer") {
+      setReaderAccessStatus("Список читателей доступен на ведущем устройстве после первой выгрузки.", "error");
+      return;
+    }
+
+    setReaderAccessStatus("Загружаю список читателей...", "");
+    try {
+      const accessToken = await getGoogleAccessToken("https://www.googleapis.com/auth/drive.file");
+      const response = await fetch(
+        `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(state.syncSettings.googleFileId)}/permissions?fields=permissions(id,emailAddress,displayName,role,type,deleted)`,
+        { headers: { Authorization: `Bearer ${accessToken}` } },
+      );
+      if (!response.ok) throw new Error(`Google Drive: ${response.status}`);
+      const payload = await response.json();
+      state.readerPermissions = (Array.isArray(payload?.permissions) ? payload.permissions : [])
+        .filter((permission) => permission?.type === "user" && permission?.role === "reader" && permission?.emailAddress && !permission?.deleted)
+        .map((permission) => ({
+          id: String(permission.id),
+          email: String(permission.emailAddress),
+          displayName: String(permission.displayName || ""),
+        }));
+      renderReaderPermissions();
+      setReaderAccessStatus(state.readerPermissions.length ? "Список читателей обновлен." : "Приглашенных читателей нет.", "success");
+    } catch (error) {
+      setReaderAccessStatus(`Не удалось загрузить список: ${error?.message || "неизвестная ошибка"}`, "error");
+    }
+  }
+
+  function renderReaderPermissions() {
+    if (!elements.readerAccessList) return;
+    if (!state.readerPermissions.length) {
+      elements.readerAccessList.innerHTML = `<div class="empty">Приглашенных читателей нет</div>`;
+      return;
+    }
+    elements.readerAccessList.innerHTML = state.readerPermissions
+      .map((permission) => `
+        <div class="reader-access-item">
+          <span class="reader-access-email">${escapeHtml(permission.email)}</span>
+          <button type="button" class="btn btn--danger" data-reader-permission-id="${escapeHtml(permission.id)}">Удалить доступ</button>
+        </div>
+      `)
+      .join("");
+  }
+
+  function onReaderAccessListClick(event) {
+    const button = event.target.closest("[data-reader-permission-id]");
+    if (!button) return;
+    const permissionId = button.getAttribute("data-reader-permission-id");
+    const permission = state.readerPermissions.find((item) => item.id === permissionId);
+    if (!permission) return;
+    deleteReaderPermission(permission);
+  }
+
+  async function deleteReaderPermission(permission) {
+    if (!window.confirm(`Удалить доступ на чтение для ${permission.email}?`)) return;
+    setReaderAccessStatus("Удаляю доступ...", "");
+    try {
+      const accessToken = await getGoogleAccessToken("https://www.googleapis.com/auth/drive.file");
+      const response = await fetch(
+        `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(state.syncSettings.googleFileId)}/permissions/${encodeURIComponent(permission.id)}`,
+        {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${accessToken}` },
+        },
+      );
+      if (!response.ok) throw new Error(`Google Drive: ${response.status}`);
+      state.readerPermissions = state.readerPermissions.filter((item) => item.id !== permission.id);
+      renderReaderPermissions();
+      setReaderAccessStatus(`Доступ удален: ${permission.email}.`, "success");
+    } catch (error) {
+      setReaderAccessStatus(`Не удалось удалить доступ: ${error?.message || "неизвестная ошибка"}`, "error");
+    }
+  }
+
+  function setReaderAccessStatus(message, state) {
+    if (!elements.readerAccessStatus) return;
+    elements.readerAccessStatus.textContent = message || "";
+    if (state) {
+      elements.readerAccessStatus.dataset.state = state;
+    } else {
+      delete elements.readerAccessStatus.dataset.state;
     }
   }
 

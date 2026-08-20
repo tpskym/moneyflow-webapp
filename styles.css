@@ -687,7 +687,8 @@ textarea:focus-visible {
 
 #google-client-id-field[hidden],
 .reader-invite[hidden],
-.cloud-recovery[hidden] {
+.cloud-recovery[hidden],
+.reader-access-management[hidden] {
   display: none !important;
 }
 
@@ -697,6 +698,55 @@ textarea:focus-visible {
   margin-top: 20px;
   padding-top: 18px;
   border-top: 1px solid var(--line);
+}
+
+.reader-access-management {
+  display: grid;
+  gap: 12px;
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+
+.reader-access-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.reader-access-heading h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.reader-access-list {
+  display: grid;
+  gap: 8px;
+}
+
+.reader-access-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.reader-access-email {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 14px;
+}
+
+.reader-access-item .btn {
+  flex: 0 0 auto;
+  min-height: 38px;
+  padding: 0 10px;
+  font-size: 13px;
 }
 
 .reader-invite-status {
