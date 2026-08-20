@@ -341,12 +341,18 @@
   }
 
   async function onClearLocalData() {
-    const confirmed = window.confirm("Удалить все локальные операции, категории и сбросить дату последней синхронизации?");
+    const confirmed = window.confirm("Сбросить приложение: удалить локальные операции, категории и настройки подключения к Google Drive?");
     if (!confirmed) return;
 
     state.operations = [];
     state.categories = [];
-    state.syncSettings.lastSuccessfulSyncAt = "";
+    state.syncSettings = {
+      googleClientId: "",
+      googleFileId: "",
+      accessMode: "writer",
+      googleAccountEmail: "",
+      lastSuccessfulSyncAt: "",
+    };
     state.searchText = "";
     state.activeTypeFilter = "all";
     state.activeCategoryFilter = new Set();
@@ -367,6 +373,9 @@
       setSyncStatus("Не удалось безопасно сохранить настройки синхронизации.");
     }
 
+    renderSyncSettingsForm();
+    updateCloudAccessUI();
+
     if (elements.form) {
       elements.form.reset();
     }
@@ -376,7 +385,7 @@
     setQuickAddDate(getTodayInputDate());
     render();
     renderCategoryOptions();
-    setSyncStatus("Локальные операции и категории очищены.");
+    setSyncStatus("Приложение сброшено: локальные данные и настройки подключения очищены.");
     updateSyncSettingsVisibility(false);
     renderLastSuccessfulSync();
   }
