@@ -1,4 +1,4 @@
-const CACHE_NAME = "moneyflow-v35";
+const CACHE_NAME = "moneyflow-v36";
 const ASSETS = [
   "./",
   "./index.html",
@@ -39,6 +39,11 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
 
+  if (isAppShellRequest(event.request)) {
+    event.respondWith(fetchAndCache(event.request));
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request).then((cached) => {
       if (cached) return cached;
@@ -58,3 +63,24 @@ self.addEventListener("fetch", (event) => {
     })
   );
 });
+
+function isAppShellRequest(request) {
+  const url = new URL(request.url);
+  const scope = new URL(self.registration.scope);
+  if (url.origin !== scope.origin || !url.pathname.startsWith(scope.pathname)) return false;
+
+  const relativePath = url.pathname.slice(scope.pathname.length);
+  return ["", "index.html", "app.js", "styles.css", "manifest.webmanifest"].includes(relativePath);
+}
+
+function fetchAndCache(request) {
+  return fetch(request)
+    .then((response) => {
+      const cloned = response.clone();
+      if (response.ok && response.status === 200 && cloned.url.startsWith("http")) {
+        caches.open(CACHE_NAME).then((cache) => cache.put(request, cloned));
+      }
+      return response;
+    })
+    .catch(() => caches.match(request).then((cached) => cached || caches.match("./index.html")));
+}
