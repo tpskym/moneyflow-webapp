@@ -11,20 +11,22 @@
   <body>
     <div class="page">
       <header class="header">
-        <p class="eyebrow">Личный счёт</p>
-        <h1>MoneyFlow</h1>
+        <div class="header-heading">
+          <p class="eyebrow">Личный счёт</p>
+          <h1>MoneyFlow</h1>
           <p class="subtitle">Учет доходов и расходов</p>
+        </div>
+        <button
+          type="button"
+          id="sync-settings-toggle"
+          class="btn btn--small btn--secondary sync-toggle"
+          aria-label="Открыть настройки синхронизации"
+          title="Открыть настройки синхронизации"
+        >
+          <span class="btn-icon" aria-hidden="true">⚙️</span>
+          <span class="sr-only">Открыть настройки синхронизации</span>
+        </button>
         <div class="sync-actions">
-          <button
-            type="button"
-            id="sync-settings-toggle"
-            class="btn btn--small btn--secondary sync-toggle"
-            aria-label="Открыть настройки синхронизации"
-            title="Открыть настройки синхронизации"
-          >
-            <span class="btn-icon" aria-hidden="true">⚙️</span>
-            <span class="sr-only">Открыть настройки синхронизации</span>
-          </button>
           <button
             type="button"
             id="webdav-sync-top"

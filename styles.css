@@ -33,16 +33,22 @@ body {
 }
 
 .header {
+  position: relative;
   margin-bottom: 14px;
 }
 
 .sync-actions {
   margin-top: 10px;
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 8px;
+  width: 100%;
 }
 
 .sync-toggle {
+  position: absolute;
+  top: 0;
+  right: 0;
   padding: 0;
   width: 44px;
   min-width: 44px;
@@ -55,13 +61,21 @@ body {
 
 .sync-button-with-icon {
   gap: 8px;
+  min-width: 0;
+  width: 100%;
+  padding: 6px 10px;
+  text-align: center;
+  line-height: 1.15;
 }
 
 .quick-add-toggle {
   gap: 8px;
-  flex: 1 1 auto;
+  min-width: 0;
   width: 100%;
   justify-content: center;
+  padding: 6px 10px;
+  text-align: center;
+  line-height: 1.15;
 }
 
 .btn-icon {
@@ -364,9 +378,10 @@ textarea:focus-visible {
 
 .year-filters {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
-  overflow: auto;
-  padding-bottom: 6px;
+  overflow: visible;
+  padding-bottom: 0;
   margin-top: 8px;
   margin-bottom: 10px;
 }
@@ -637,7 +652,7 @@ textarea:focus-visible {
   }
 
   .sync-actions {
-    justify-content: flex-start;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
 
   .header {
