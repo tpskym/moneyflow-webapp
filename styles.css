@@ -38,6 +38,18 @@ body {
   margin-bottom: 14px;
 }
 
+.header-heading {
+  padding-right: 104px;
+}
+
+.header-tools {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+  gap: 8px;
+}
+
 .sync-actions {
   margin-top: 10px;
   display: grid;
@@ -47,13 +59,26 @@ body {
 }
 
 .sync-toggle {
-  position: absolute;
-  top: 0;
-  right: 0;
   padding: 0;
   width: 44px;
   min-width: 44px;
   justify-content: center;
+}
+
+.site-data-reset {
+  width: 44px;
+  min-width: 44px;
+  padding: 0;
+}
+
+.site-data-reset svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
 }
 
 .sync-toggle.is-open .btn-icon {

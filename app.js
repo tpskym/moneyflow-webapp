@@ -49,6 +49,7 @@
     syncNowTopButton: document.getElementById("webdav-sync-top"),
     syncStatus: document.getElementById("webdav-status"),
     clearDataButton: document.getElementById("webdav-clear-data"),
+    siteDataResetButton: document.getElementById("site-data-reset"),
     quickAddToggleButton: document.getElementById("quick-add-toggle"),
     quickAddCard: document.getElementById("quick-add-card"),
     quickAddTitle: document.getElementById("quick-add-title"),
@@ -148,6 +149,7 @@
     elements.loadMoreOperationsButton.addEventListener("click", loadMoreOperations);
     elements.syncSaveButton?.addEventListener("click", onSyncSave);
     elements.clearDataButton?.addEventListener("click", onClearLocalData);
+    elements.siteDataResetButton?.addEventListener("click", onSiteDataReset);
     elements.syncNowTopButton?.addEventListener("click", onSyncNow);
     elements.syncToggleButton?.addEventListener("click", onSyncToggle);
     elements.quickAddToggleButton?.addEventListener("click", onQuickAddToggle);
@@ -291,6 +293,28 @@
     renderCategoryOptions();
     setSyncStatus("Локальные операции, категории и дата синхронизации очищены.");
     updateSyncSettingsVisibility(false);
+  }
+
+  async function onSiteDataReset() {
+    const confirmed = window.confirm(
+      "Удалить все данные сайта: операции, категории, настройки синхронизации и кэш приложения? Это действие нельзя отменить."
+    );
+    if (!confirmed) return;
+
+    localStorage.clear();
+
+    try {
+      const cacheNames = await caches.keys();
+      await Promise.all(cacheNames.map((cacheName) => caches.delete(cacheName)));
+      if ("serviceWorker" in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(registrations.map((registration) => registration.unregister()));
+      }
+    } catch {
+      // Reloading still clears local application state if cache access is unavailable.
+    }
+
+    window.location.replace(`${window.location.pathname}?refresh=${Date.now()}`);
   }
 
   function onSyncNow() {
