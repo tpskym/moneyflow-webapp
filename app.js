@@ -283,6 +283,18 @@
 
   function onSyncNow() {
     onSyncSave({ close: false });
+    const missingSyncSettings = getMissingSyncSettings();
+    if (missingSyncSettings.length > 0) {
+      updateSyncSettingsVisibility(true);
+      setSyncStatus(`Синхронизация не выполнена: заполните ${missingSyncSettings.join(", ")}.`);
+      const firstMissingInput = !state.syncSettings.webdavPath
+        ? elements.syncWebDavPathInput
+        : !state.syncSettings.username
+          ? elements.syncUsernameInput
+          : elements.syncPasswordInput;
+      firstMissingInput?.focus();
+      return;
+    }
     syncNowWithWebDav();
   }
 
