@@ -1352,10 +1352,10 @@
     const startCategorySearchOption = state.categorySearchEditing
       ? ""
       : `
-        <label for="operation-category-input" class="category-picker-option category-picker-option--add" data-action="start-category-search">
+        <button type="button" class="category-picker-option category-picker-option--add" data-action="start-category-search">
           <span class="category-picker-add-mark">+</span>
           <span>Найти или добавить категорию</span>
-        </label>
+        </button>
       `;
 
     if (!result.totalItems) {
