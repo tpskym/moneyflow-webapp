@@ -218,7 +218,7 @@
 
   function onSearchToggle() {
     const shouldOpen = Boolean(elements.searchField?.hidden);
-    updateSearchVisibility(shouldOpen, { focus: shouldOpen });
+    updateSearchVisibility(shouldOpen);
   }
 
   function onYearFilterClick(event) {
