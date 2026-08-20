@@ -72,6 +72,7 @@
     readerInviteButton: document.getElementById("reader-invite-button"),
     readerInviteStatus: document.getElementById("reader-invite-status"),
     readerConnection: document.getElementById("reader-connection"),
+    readerConnectionLink: document.getElementById("reader-connection-link"),
     readerConnectionShareButton: document.getElementById("reader-connection-share"),
     readerConnectionStatus: document.getElementById("reader-connection-status"),
     readerAccessManagement: document.getElementById("reader-access-management"),
@@ -1335,6 +1336,11 @@
     if (elements.readerConnection) {
       elements.readerConnection.hidden = !(hasClientId && hasFileId && state.syncSettings.accessMode === "writer");
     }
+    if (elements.readerConnectionLink) {
+      elements.readerConnectionLink.value = hasClientId && hasFileId && state.syncSettings.accessMode === "writer"
+        ? getReaderConnectionLink()
+        : "";
+    }
     if (elements.readerAccessManagement) {
       elements.readerAccessManagement.hidden = !(hasClientId && hasFileId && state.syncSettings.accessMode === "writer");
     }
@@ -1802,10 +1808,8 @@
     setReaderInviteStatus("Отправляю приглашение...", "");
     try {
       const accessToken = await getGoogleAccessToken("https://www.googleapis.com/auth/drive.file");
-      const connectionLink = getReaderConnectionLink();
-      const emailMessage = `Откройте MoneyFlow по этой ссылке, чтобы подключить режим чтения: ${connectionLink}`;
       const response = await fetch(
-        `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(state.syncSettings.googleFileId)}/permissions?sendNotificationEmail=true&emailMessage=${encodeURIComponent(emailMessage)}`,
+        `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(state.syncSettings.googleFileId)}/permissions?sendNotificationEmail=false`,
         {
           method: "POST",
           headers: {
@@ -1817,8 +1821,8 @@
       );
       if (!response.ok) throw new Error(`Google Drive: ${response.status}`);
       elements.readerEmailInput.value = "";
-      setSyncStatus(`Доступ на чтение и ссылка подключения отправлены: ${email}.`);
-      setReaderInviteStatus(`Доступ выдан для ${email}. Если письмо не придет, отправьте ссылку ниже вручную.`, "success");
+      setSyncStatus(`Доступ на чтение выдан: ${email}.`);
+      setReaderInviteStatus(`Доступ выдан для ${email}. Отправьте ему ссылку подключения ниже.`, "success");
     } catch (error) {
       setSyncStatus(`Не удалось открыть доступ: ${error?.message || "неизвестная ошибка"}`);
       setReaderInviteStatus(`Отправка не выполнена: ${error?.message || "неизвестная ошибка"}`, "error");

@@ -13,7 +13,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icons/moneyflow.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="icons/moneyflow.svg" />
-    <link rel="stylesheet" href="styles.css?v=73" />
+    <link rel="stylesheet" href="styles.css?v=74" />
   </head>
   <body>
     <div class="page">
@@ -21,7 +21,7 @@
         <div class="header-heading">
           <p class="eyebrow">Личный счёт</p>
           <h1>MoneyFlow</h1>
-          <p class="subtitle">Учет доходов и расходов <span class="app-version">v73</span></p>
+          <p class="subtitle">Учет доходов и расходов <span class="app-version">v74</span></p>
         </div>
         <div class="header-tools">
           <button
@@ -95,14 +95,18 @@
             <label class="field">
               Gmail-адрес читателя
               <input id="reader-email" type="email" inputmode="email" autocomplete="email" placeholder="name@gmail.com" />
-              <small class="field-hint">Укажите адрес почты Google, например name@gmail.com.</small>
+              <small class="field-hint">Адрес нужен только для выдачи доступа. Письмо Google Drive не отправляется.</small>
             </label>
             <button id="reader-invite-button" type="button" class="btn btn--secondary">Открыть доступ читателю</button>
             <div id="reader-invite-status" class="reader-invite-status" aria-live="polite"></div>
           </div>
           <div id="reader-connection" class="reader-connection" hidden>
-            <p>Если письмо Google Drive не пришло, отправьте читателю ссылку подключения вручную.</p>
-            <button id="reader-connection-share" type="button" class="btn btn--secondary">Отправить ссылку подключения</button>
+            <p>Передайте эту ссылку читателю через мессенджер или другое приложение.</p>
+            <label class="field">
+              Ссылка подключения
+              <input id="reader-connection-link" type="text" readonly />
+            </label>
+            <button id="reader-connection-share" type="button" class="btn btn--secondary">Отправить ссылку</button>
             <div id="reader-connection-status" class="reader-invite-status" aria-live="polite"></div>
           </div>
           <div id="reader-access-management" class="reader-access-management" hidden>
@@ -240,6 +244,6 @@
     </div>
 
     <script src="https://accounts.google.com/gsi/client" async></script>
-    <script src="app.js?v=73" defer></script>
+    <script src="app.js?v=74" defer></script>
   </body>
 </html>
