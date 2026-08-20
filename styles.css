@@ -297,6 +297,10 @@ h1 {
   gap: 6px;
 }
 
+.amount-keypad[hidden] {
+  display: none;
+}
+
 .amount-display {
   display: flex;
   align-items: center;

@@ -719,6 +719,7 @@
     }
 
     if (elements.amountKeypad) {
+      elements.amountKeypad.hidden = isViewMode;
       [...elements.amountKeypad.querySelectorAll("button")].forEach((button) => {
         button.disabled = isViewMode;
       });
