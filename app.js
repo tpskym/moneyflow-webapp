@@ -1647,17 +1647,17 @@
     if (!elements.lastSuccessfulSync) return;
     const timestamp = Date.parse(state.syncSettings.lastSuccessfulSyncAt || "");
     if (!Number.isFinite(timestamp)) {
-      elements.lastSuccessfulSync.textContent = "Еще не было";
+      elements.lastSuccessfulSync.textContent = "· Синхронизация: ещё не было";
       return;
     }
-    elements.lastSuccessfulSync.textContent = new Date(timestamp).toLocaleString("ru-RU", {
+    elements.lastSuccessfulSync.textContent = `· Синхронизация: ${new Date(timestamp).toLocaleString("ru-RU", {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
       hour: "2-digit",
       minute: "2-digit",
       second: "2-digit",
-    });
+    })}`;
   }
 
   function getMissingSyncSettings({ needsFileId = false } = {}) {
