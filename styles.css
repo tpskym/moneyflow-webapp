@@ -67,22 +67,6 @@ body {
   justify-content: center;
 }
 
-.site-data-reset {
-  width: 44px;
-  min-width: 44px;
-  padding: 0;
-}
-
-.site-data-reset svg {
-  width: 19px;
-  height: 19px;
-  fill: none;
-  stroke: currentColor;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-width: 2;
-}
-
 .sync-toggle.is-open .btn-icon {
   transform: rotate(35deg);
 }
