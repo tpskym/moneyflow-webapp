@@ -1953,13 +1953,16 @@
     try {
       const accessToken = await getGoogleAccessToken("https://www.googleapis.com/auth/drive.file");
       const response = await fetch(
-        `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(state.syncSettings.googleFileId)}/permissions/${encodeURIComponent(permission.id)}`,
+        `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(state.syncSettings.googleFileId)}/permissions/${encodeURIComponent(permission.id)}?supportsAllDrives=true`,
         {
           method: "DELETE",
           headers: { Authorization: `Bearer ${accessToken}` },
         },
       );
-      if (!response.ok) throw new Error(`Google Drive: ${response.status}`);
+      if (!response.ok) {
+        const errorPayload = await response.json().catch(() => null);
+        throw new Error(errorPayload?.error?.message || `Google Drive: ${response.status}`);
+      }
       state.readerPermissions = state.readerPermissions.filter((item) => item.id !== permission.id);
       renderReaderPermissions();
       setReaderAccessStatus(`Доступ удален: ${permission.email}.`, "success");
