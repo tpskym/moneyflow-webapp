@@ -2461,18 +2461,23 @@
     }
 
     const connectionLink = getReaderConnectionLink();
+    if (!connectionLink) {
+      setReaderConnectionStatus("Обновите ссылку после выгрузки зашифрованного файла.", "error");
+      return;
+    }
+    const appLink = `${location.origin}${location.pathname}`;
+    const shareMessage = `Установите M-Flow: ${appLink}\n\n1. Откройте первую ссылку и установите приложение.\n2. Затем откройте ссылку подключения:\n${connectionLink}\n\nДанные загрузятся автоматически.`;
     try {
       if (typeof navigator.share === "function") {
         await navigator.share({
-          title: "Подключение MoneyFlow",
-          text: "Откройте ссылку, затем нажмите «Синхронизировать» для подключения чтения данных MoneyFlow.",
-          url: connectionLink,
+          title: "M-Flow: подключение читателя",
+          text: shareMessage,
         });
         setReaderConnectionStatus("Ссылка передана читателю.", "success");
         return;
       }
-      await copyReaderConnectionLink(connectionLink);
-      setReaderConnectionStatus("Ссылка скопирована в буфер обмена. Отправьте её читателю любым способом.", "success");
+      await copyReaderConnectionLink(shareMessage);
+      setReaderConnectionStatus("Инструкция и ссылки скопированы в буфер обмена.", "success");
     } catch (error) {
       if (error?.name === "AbortError") {
         setReaderConnectionStatus("Отправка ссылки отменена.", "");
