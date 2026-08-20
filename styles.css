@@ -319,6 +319,11 @@ h1 {
   gap: 10px;
 }
 
+.category-picker-popover[hidden],
+.category-create-form[hidden] {
+  display: none;
+}
+
 .category-picker-list {
   max-height: 250px;
   overflow: auto;
@@ -371,7 +376,7 @@ h1 {
 }
 
 .category-create-toggle {
-  width: 100%;
+  justify-self: start;
 }
 
 .category-create-form {

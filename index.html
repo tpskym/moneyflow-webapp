@@ -13,7 +13,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icons/moneyflow.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="icons/moneyflow.svg" />
-    <link rel="stylesheet" href="styles.css?v=39" />
+    <link rel="stylesheet" href="styles.css?v=40" />
   </head>
   <body>
     <div class="page">
@@ -21,7 +21,7 @@
         <div class="header-heading">
           <p class="eyebrow">Личный счёт</p>
           <h1>MoneyFlow</h1>
-          <p class="subtitle">Учет доходов и расходов <span class="app-version">v39</span></p>
+          <p class="subtitle">Учет доходов и расходов <span class="app-version">v40</span></p>
         </div>
         <div class="header-tools">
           <button
@@ -129,7 +129,10 @@
               </div>
               <input type="hidden" id="operation-category" required />
               <div id="category-picker-popover" class="category-picker-popover" hidden>
-                <button type="button" id="category-create-toggle" class="btn btn--secondary category-create-toggle">Добавить категорию</button>
+                <button type="button" id="category-create-toggle" class="category-picker-option category-picker-option--add category-create-toggle">
+                  <span class="category-picker-add-mark">+</span>
+                  <span>Добавить категорию</span>
+                </button>
                 <div id="category-create-form" class="category-create-form" hidden>
                   <label class="sr-only" for="category-create-name">Название новой категории</label>
                   <input id="category-create-name" type="text" autocomplete="off" placeholder="Название категории" />
@@ -204,6 +207,6 @@
       </main>
     </div>
 
-    <script src="app.js?v=39" defer></script>
+    <script src="app.js?v=40" defer></script>
   </body>
 </html>
