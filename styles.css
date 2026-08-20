@@ -750,7 +750,7 @@ textarea:focus-visible {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  max-height: 180px;
+  max-height: 360px;
   overflow-y: auto;
   margin-top: 12px;
   padding-top: 12px;
