@@ -13,7 +13,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icons/moneyflow.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="icons/moneyflow.svg" />
-    <link rel="stylesheet" href="styles.css?v=50" />
+    <link rel="stylesheet" href="styles.css?v=51" />
   </head>
   <body>
     <div class="page">
@@ -36,14 +36,11 @@
           </button>
         </div>
         <div class="sync-actions">
-          <button
-            type="button"
-            id="webdav-sync-top"
-            class="btn btn--small sync-button-with-icon"
-            aria-label="Синхронизировать"
-            title="Синхронизировать"
-          >
-            <span>Синхронизировать</span>
+          <button type="button" id="cloud-upload-top" class="btn btn--small sync-button-with-icon" aria-label="Выгрузить в облако" title="Выгрузить в облако">
+            <span>Выгрузить</span>
+          </button>
+          <button type="button" id="cloud-download-top" class="btn btn--small sync-button-with-icon" aria-label="Загрузить из облака" title="Загрузить из облака">
+            <span>Загрузить</span>
           </button>
           <button
             type="button"
@@ -59,24 +56,30 @@
 
       <main>
         <section class="card sync-card" id="sync-settings-section" hidden>
-          <h2>Синхронизация</h2>
+          <h2>Google Drive</h2>
           <label class="field">
-            Полный путь к файлу WebDAV
-            <input id="webdav-path" type="text" placeholder="https://domain/webdav/folder/moneyflow.json" />
+            OAuth Client ID
+            <input id="google-client-id" type="text" autocomplete="off" placeholder="...apps.googleusercontent.com" />
           </label>
           <label class="field">
-            Логин
-            <input id="webdav-username" type="text" autocomplete="username" />
+            ID файла в Google Drive
+            <input id="google-file-id" type="text" autocomplete="off" placeholder="Будет создан при первой выгрузке" />
           </label>
           <label class="field">
-            Пароль
-            <input id="webdav-password" type="password" autocomplete="current-password" />
+            Режим устройства
+            <select id="cloud-access-mode">
+              <option value="writer">Веду данные: загрузка и выгрузка</option>
+              <option value="reader">Только чтение из облака</option>
+            </select>
           </label>
           <div class="sync-buttons">
-            <button id="webdav-save" type="button" class="btn btn--secondary">Сохранить</button>
-            <button id="webdav-clear-data" type="button" class="btn btn--danger">Очистить локальные данные</button>
+            <button id="cloud-save" type="button" class="btn btn--secondary">Сохранить настройки</button>
+            <button id="cloud-download" type="button" class="btn btn--secondary">Загрузить из облака</button>
+            <button id="cloud-upload" type="button" class="btn">Выгрузить в облако</button>
+            <button id="cloud-clear-data" type="button" class="btn btn--danger">Очистить локальные данные</button>
           </div>
-          <div id="webdav-status" class="muted"></div>
+          <div class="muted">Выгрузка полностью заменяет файл в облаке. Загрузка полностью заменяет данные на этом устройстве.</div>
+          <div id="cloud-status" class="muted" aria-live="polite"></div>
         </section>
 
         <section class="card quick-add-card" id="quick-add-card" hidden>
@@ -199,6 +202,7 @@
       </main>
     </div>
 
-    <script src="app.js?v=50" defer></script>
+    <script src="https://accounts.google.com/gsi/client" async></script>
+    <script src="app.js?v=51" defer></script>
   </body>
 </html>

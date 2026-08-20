@@ -55,13 +55,16 @@
     categoryFilterContainer: document.getElementById("category-filters"),
     syncToggleButton: document.getElementById("sync-settings-toggle"),
     syncSettingsCard: document.getElementById("sync-settings-section"),
-    syncWebDavPathInput: document.getElementById("webdav-path"),
-    syncUsernameInput: document.getElementById("webdav-username"),
-    syncPasswordInput: document.getElementById("webdav-password"),
-    syncSaveButton: document.getElementById("webdav-save"),
-    syncNowTopButton: document.getElementById("webdav-sync-top"),
-    syncStatus: document.getElementById("webdav-status"),
-    clearDataButton: document.getElementById("webdav-clear-data"),
+    syncGoogleClientIdInput: document.getElementById("google-client-id"),
+    syncGoogleFileIdInput: document.getElementById("google-file-id"),
+    syncAccessModeInput: document.getElementById("cloud-access-mode"),
+    syncSaveButton: document.getElementById("cloud-save"),
+    cloudUploadTopButton: document.getElementById("cloud-upload-top"),
+    cloudDownloadTopButton: document.getElementById("cloud-download-top"),
+    cloudUploadButton: document.getElementById("cloud-upload"),
+    cloudDownloadButton: document.getElementById("cloud-download"),
+    syncStatus: document.getElementById("cloud-status"),
+    clearDataButton: document.getElementById("cloud-clear-data"),
     quickAddToggleButton: document.getElementById("quick-add-toggle"),
     quickAddCard: document.getElementById("quick-add-card"),
     quickAddTitle: document.getElementById("quick-add-title"),
@@ -73,10 +76,9 @@
     operations: [],
     categories: [...DEFAULT_CATEGORIES],
     syncSettings: {
-      webdavPath: "",
-      username: "",
-      password: "",
-      lastSyncedAt: "",
+      googleClientId: "",
+      googleFileId: "",
+      accessMode: "writer",
     },
     searchText: "",
     activeTypeFilter: "all",
@@ -102,17 +104,7 @@
     const persistedOperations = readJson(STORAGE_KEYS.operations, []);
     state.operations = sanitizeOperations(persistedOperations);
     state.categories = sanitizeCategories(readJson(STORAGE_KEYS.categories, DEFAULT_CATEGORIES));
-    const storedSyncSettings = sanitizeSyncSettings(readJson(STORAGE_KEYS.syncSettings, state.syncSettings));
-    try {
-      const restoredSettings = await restoreSyncSettings(storedSyncSettings);
-      state.syncSettings = restoredSettings.settings;
-      if (restoredSettings.needsEncryption) {
-        await persistSyncSettings();
-      }
-    } catch {
-      state.syncSettings = { ...storedSyncSettings, password: "" };
-      writeJson(STORAGE_KEYS.syncSettings, state.syncSettings);
-    }
+    state.syncSettings = sanitizeSyncSettings(readJson(STORAGE_KEYS.syncSettings, state.syncSettings));
 
     renderSyncSettingsForm();
     syncApplyTypeFromState();
@@ -176,7 +168,10 @@
     elements.loadMoreOperationsButton.addEventListener("click", loadMoreOperations);
     elements.syncSaveButton?.addEventListener("click", onSyncSave);
     elements.clearDataButton?.addEventListener("click", onClearLocalData);
-    elements.syncNowTopButton?.addEventListener("click", onSyncNow);
+    elements.cloudUploadTopButton?.addEventListener("click", onCloudUpload);
+    elements.cloudDownloadTopButton?.addEventListener("click", onCloudDownload);
+    elements.cloudUploadButton?.addEventListener("click", onCloudUpload);
+    elements.cloudDownloadButton?.addEventListener("click", onCloudDownload);
     elements.syncToggleButton?.addEventListener("click", onSyncToggle);
     elements.quickAddToggleButton?.addEventListener("click", onQuickAddToggle);
     elements.operationDateInput?.addEventListener("input", onOperationDateInput);
@@ -293,19 +288,12 @@
   }
 
   async function onSyncSave({ close = true } = {}) {
-    const previousLastSyncedAt = state.syncSettings.lastSyncedAt || "";
     state.syncSettings = sanitizeSyncSettings({
-      webdavPath: elements.syncWebDavPathInput?.value || "",
-      username: elements.syncUsernameInput?.value || "",
-      password: elements.syncPasswordInput?.value || "",
-      lastSyncedAt: previousLastSyncedAt,
+      googleClientId: elements.syncGoogleClientIdInput?.value || "",
+      googleFileId: elements.syncGoogleFileIdInput?.value || "",
+      accessMode: elements.syncAccessModeInput?.value || "writer",
     });
-    try {
-      await persistSyncSettings();
-    } catch {
-      setSyncStatus("Не удалось безопасно сохранить пароль. Проверьте, что сайт открыт по HTTPS.");
-      return false;
-    }
+    await persistSyncSettings();
     setSyncStatus("Настройки сохранены.");
     if (close) {
       updateSyncSettingsVisibility(false);
@@ -319,7 +307,6 @@
 
     state.operations = [];
     state.categories = [];
-    state.syncSettings.lastSyncedAt = "";
     state.searchText = "";
     state.activeTypeFilter = "all";
     state.activeCategoryFilter = new Set();
@@ -349,29 +336,46 @@
     setQuickAddDate(getTodayInputDate());
     render();
     renderCategoryOptions();
-    setSyncStatus("Локальные операции, категории и дата синхронизации очищены.");
+    setSyncStatus("Локальные операции и категории очищены.");
     updateSyncSettingsVisibility(false);
   }
 
-  async function onSyncNow() {
+  async function onCloudUpload() {
     const saved = await onSyncSave({ close: false });
     if (!saved) {
       updateSyncSettingsVisibility(true);
       return;
     }
+    if (state.syncSettings.accessMode !== "writer") {
+      updateSyncSettingsVisibility(true);
+      setSyncStatus("Это устройство настроено только для чтения. Выгрузка недоступна.");
+      return;
+    }
     const missingSyncSettings = getMissingSyncSettings();
     if (missingSyncSettings.length > 0) {
       updateSyncSettingsVisibility(true);
-      setSyncStatus(`Синхронизация не выполнена: заполните ${missingSyncSettings.join(", ")}.`);
-      const firstMissingInput = !state.syncSettings.webdavPath
-        ? elements.syncWebDavPathInput
-        : !state.syncSettings.username
-          ? elements.syncUsernameInput
-          : elements.syncPasswordInput;
+      setSyncStatus(`Выгрузка не выполнена: заполните ${missingSyncSettings.join(", ")}.`);
+      const firstMissingInput = elements.syncGoogleClientIdInput;
       firstMissingInput?.focus();
       return;
     }
-    syncNowWithWebDav();
+    uploadToGoogleDrive();
+  }
+
+  async function onCloudDownload() {
+    const saved = await onSyncSave({ close: false });
+    if (!saved) {
+      updateSyncSettingsVisibility(true);
+      return;
+    }
+    const missingSyncSettings = getMissingSyncSettings({ needsFileId: true });
+    if (missingSyncSettings.length > 0) {
+      updateSyncSettingsVisibility(true);
+      setSyncStatus(`Загрузка не выполнена: заполните ${missingSyncSettings.join(", ")}.`);
+      (elements.syncGoogleClientIdInput?.value ? elements.syncGoogleFileIdInput : elements.syncGoogleClientIdInput)?.focus();
+      return;
+    }
+    downloadFromGoogleDrive();
   }
 
   function onAmountKeypadClick(event) {
@@ -461,19 +465,21 @@
     const operationFromForm = getOperationFromForm();
     if (!operationFromForm) return;
 
-    const operationsToAdd = [];
-    operationsToAdd.push(operationFromForm);
-
     if (state.quickAddMode === "edit" && state.quickAddSourceOperationId) {
-      const sourceOperation = state.operations.find((item) => item.id === state.quickAddSourceOperationId);
-      if (sourceOperation) {
-        const inverseSource = createOppositeOperation(sourceOperation);
-        operationsToAdd.push(inverseSource);
+      const sourceIndex = state.operations.findIndex((item) => item.id === state.quickAddSourceOperationId);
+      if (sourceIndex >= 0) {
+        const sourceOperation = state.operations[sourceIndex];
+        state.operations[sourceIndex] = {
+          ...operationFromForm,
+          id: sourceOperation.id,
+          createdAt: sourceOperation.createdAt,
+          localAddedAt: sourceOperation.localAddedAt,
+        };
+      } else {
+        state.operations.push(operationFromForm);
       }
-    }
-
-    for (const operation of operationsToAdd) {
-      state.operations.push(operation);
+    } else {
+      state.operations.push(operationFromForm);
     }
     writeJson(STORAGE_KEYS.operations, state.operations);
 
@@ -545,7 +551,7 @@
         openQuickAddWithOperation(operation, { mode: "view", date: getOperationDateValue(operation) });
       } else if (action === "delete") {
         closeAllOperationMenus();
-        addInverseOperation(operation);
+        removeOperation(operation.id);
       }
 
       return;
@@ -768,7 +774,7 @@
     return {
       id: getUuid(),
       operationDate: operationDateValue,
-      createdAt: "",
+      createdAt: new Date().toISOString(),
       localAddedAt: new Date().toISOString(),
       type: selectedType,
       amount: round2(amount),
@@ -777,37 +783,11 @@
     };
   }
 
-  function addInverseOperation(operation) {
-    const inverseOperation = createOppositeOperation(operation);
-    if (!inverseOperation) return;
-
-    state.operations.push(inverseOperation);
+  function removeOperation(operationId) {
+    state.operations = state.operations.filter((operation) => operation.id !== operationId);
     writeJson(STORAGE_KEYS.operations, state.operations);
     state.currentPage = 1;
     render();
-  }
-
-  function createOppositeOperation(operation) {
-    if (!operation) return null;
-    const oppositeType = getOppositeType(operation.type);
-    if (!["income", "expense"].includes(oppositeType)) return null;
-
-    return {
-      id: getUuid(),
-      operationDate: getOperationDateValue(operation),
-      createdAt: "",
-      localAddedAt: new Date().toISOString(),
-      type: oppositeType,
-      amount: round2(Math.abs(Number(operation.amount) || 0)),
-      categoryId: operation.categoryId,
-      description: operation.description || "",
-    };
-  }
-
-  function getOppositeType(type) {
-    if (type === "income") return "expense";
-    if (type === "expense") return "income";
-    return "";
   }
 
   function setOperationCategoryForQuickAdd(categoryId, fallbackName) {
@@ -1151,59 +1131,11 @@
       })
       .sort((a, b) => compareOperationsChronologicalDescending(a, b));
 
-    const visibleByCancel = getRenderableOperations(filteredByQuery);
     if (state.activeTypeFilter === "all") {
-      return visibleByCancel;
+      return filteredByQuery;
     }
 
-    return visibleByCancel.filter((operation) => operation.type === state.activeTypeFilter);
-  }
-
-  function getRenderableOperations(operations) {
-    if (!Array.isArray(operations) || operations.length === 0) return [];
-
-    const totalByKey = new Map();
-    for (const operation of operations) {
-      if (!["income", "expense"].includes(operation.type)) continue;
-      const key = getCancellationKey(operation);
-      const state = totalByKey.get(key) || { income: new Map(), expense: new Map() };
-      const amount = round2(Math.abs(Number(operation.amount) || 0));
-      const amountKey = formatAmountForCancellation(amount);
-      if (operation.type === "income") {
-        const entries = state.income.get(amountKey) || [];
-        entries.push(operation.id);
-        state.income.set(amountKey, entries);
-      } else if (operation.type === "expense") {
-        const entries = state.expense.get(amountKey) || [];
-        entries.push(operation.id);
-        state.expense.set(amountKey, entries);
-      }
-      totalByKey.set(key, state);
-    }
-
-    const cancelledIds = new Set();
-    for (const bucket of totalByKey.values()) {
-      for (const [amountKey, incomeIds] of bucket.income) {
-        const expenseIds = bucket.expense.get(amountKey) || [];
-        const pairsToCancel = Math.min(incomeIds.length, expenseIds.length);
-        if (pairsToCancel <= 0) continue;
-
-        for (let i = 0; i < pairsToCancel; i += 1) {
-          cancelledIds.add(incomeIds[i]);
-          cancelledIds.add(expenseIds[i]);
-        }
-      }
-    }
-
-    return operations.filter((operation) => !cancelledIds.has(operation.id));
-  }
-
-  function getCancellationKey(operation) {
-    const dateValue = parseDateToDateOnlyString(getOperationDateValue(operation));
-    const day = dateValue || "invalid";
-    const category = operation.categoryId || "";
-    const description = normalizeTextForSearch(operation.description || "");
-    return `${day}__${category}__${description}`;
+    return filteredByQuery.filter((operation) => operation.type === state.activeTypeFilter);
   }
 
   function getOperationsByYear(operations) {
@@ -1495,10 +1427,9 @@
 
   function sanitizeSyncSettings(settings) {
     return {
-      webdavPath: String((settings && settings.webdavPath) || "").trim(),
-      username: String((settings && settings.username) || "").trim(),
-      password: String((settings && settings.password) || "").trim(),
-      lastSyncedAt: String((settings && settings.lastSyncedAt) || "").trim(),
+      googleClientId: String((settings && settings.googleClientId) || "").trim(),
+      googleFileId: String((settings && settings.googleFileId) || "").trim(),
+      accessMode: settings && settings.accessMode === "reader" ? "reader" : "writer",
     };
   }
 
@@ -1520,11 +1451,7 @@
   }
 
   async function persistSyncSettings() {
-    const encryptedPassword = await encryptStoredPassword(state.syncSettings.password);
-    writeJson(STORAGE_KEYS.syncSettings, {
-      ...state.syncSettings,
-      password: encryptedPassword,
-    });
+    writeJson(STORAGE_KEYS.syncSettings, state.syncSettings);
   }
 
   async function encryptStoredPassword(password) {
@@ -1641,11 +1568,11 @@
       );
   }
   function renderSyncSettingsForm() {
-    if (!elements.syncWebDavPathInput || !elements.syncUsernameInput || !elements.syncPasswordInput) return;
+    if (!elements.syncGoogleClientIdInput || !elements.syncGoogleFileIdInput || !elements.syncAccessModeInput) return;
 
-    elements.syncWebDavPathInput.value = state.syncSettings.webdavPath;
-    elements.syncUsernameInput.value = state.syncSettings.username;
-    elements.syncPasswordInput.value = state.syncSettings.password;
+    elements.syncGoogleClientIdInput.value = state.syncSettings.googleClientId;
+    elements.syncGoogleFileIdInput.value = state.syncSettings.googleFileId;
+    elements.syncAccessModeInput.value = state.syncSettings.accessMode;
   }
 
   function setSyncStatus(message) {
@@ -1653,115 +1580,107 @@
     elements.syncStatus.textContent = message || "";
   }
 
-  function getMissingSyncSettings() {
+  function getMissingSyncSettings({ needsFileId = false } = {}) {
     const missing = [];
-    if (!state.syncSettings.webdavPath) {
-      missing.push("путь к файлу");
+    if (!state.syncSettings.googleClientId) {
+      missing.push("OAuth Client ID");
     }
-    if (!state.syncSettings.username) {
-      missing.push("логин");
-    }
-    if (!state.syncSettings.password) {
-      missing.push("пароль");
-    }
+    if (needsFileId && !state.syncSettings.googleFileId) missing.push("ID файла Google Drive");
     return missing;
   }
 
-  async function syncNowWithWebDav() {
-    const missingSyncSettings = getMissingSyncSettings();
-    if (missingSyncSettings.length > 0) {
-      setSyncStatus(`Синхронизация не выполнена: не указаны настройки (${missingSyncSettings.join(", ")}).`);
-      return;
+  async function getGoogleAccessToken(scope) {
+    if (!globalThis.google?.accounts?.oauth2) {
+      throw new Error("Сервис авторизации Google ещё загружается. Повторите попытку через несколько секунд.");
     }
-
-    const syncStartedAt = new Date();
-
-    const encodedAuth = `${state.syncSettings.username || ""}:${state.syncSettings.password || ""}`;
-    const headers = {
-      "Content-Type": "application/json",
-    };
-    if (encodedAuth.trim()) {
-      headers.Authorization = `Basic ${btoa(unescape(encodeURIComponent(encodedAuth)))}`;
-    }
-
-    setSyncStatus("Синхронизация...");
-    try {
-      const preparedLocalOperations = prepareOperationsForSync(state.operations, syncStartedAt);
-      if (preparedLocalOperations.changed) {
-        state.operations = preparedLocalOperations.operations;
-        writeJson(STORAGE_KEYS.operations, state.operations);
-      }
-
-      const localPayload = {
-        version: 1,
-        operations: state.operations,
-        categories: state.categories,
-        lastSyncedAt: state.syncSettings.lastSyncedAt,
-      };
-
-      let remotePayload = null;
-      try {
-        const response = await fetch(state.syncSettings.webdavPath, {
-          method: "GET",
-          headers,
-        });
-        if (response.ok) {
-          remotePayload = await response.json();
-        } else if (response.status >= 400 && response.status !== 404) {
-          throw new Error(`Чтение удаленного файла: ${response.status} ${response.statusText}`);
-        }
-      } catch {
-        remotePayload = null;
-      }
-
-      const remoteOps = Array.isArray(remotePayload?.operations) ? remotePayload.operations : [];
-      const parsedRemoteSince = state.syncSettings.lastSyncedAt ? Date.parse(state.syncSettings.lastSyncedAt) : NaN;
-      const remoteSince = Number.isFinite(parsedRemoteSince) ? parsedRemoteSince : 0;
-      let remoteCursor = 0;
-      const remoteNewOps = remoteOps
-        .map((operation) => sanitizeOperations([operation])[0])
-        .filter(Boolean)
-        .map((operation) => prepareRemoteOperationForSync(operation, syncStartedAt, remoteCursor++))
-        .filter((operation) => {
-          if (!remoteSince) return true;
-          const operationCreated = Date.parse(operation?.createdAt);
-          if (!Number.isFinite(operationCreated)) return false;
-          return operationCreated > remoteSince;
-        });
-      const remoteCategories = Array.isArray(remotePayload?.categories) ? remotePayload?.categories : [];
-
-      const mergedCategories = mergeCategories([...state.categories], remoteCategories);
-      const mergedOperations = mergeOperations([...state.operations], remoteNewOps);
-
-      const mergedPayload = {
-        ...localPayload,
-        operations: mergedOperations,
-        categories: mergedCategories,
-        lastSyncedAt: new Date().toISOString(),
-      };
-
-      const saveResponse = await fetch(state.syncSettings.webdavPath, {
-        method: "PUT",
-        headers,
-        body: JSON.stringify(mergedPayload),
+    return new Promise((resolve, reject) => {
+      const tokenClient = globalThis.google.accounts.oauth2.initTokenClient({
+        client_id: state.syncSettings.googleClientId,
+        scope,
+        callback: (response) => {
+          if (response?.error) {
+            reject(new Error(response.error_description || response.error));
+            return;
+          }
+          resolve(response.access_token);
+        },
       });
+      tokenClient.requestAccessToken({ prompt: "" });
+    });
+  }
 
-      if (!saveResponse.ok) {
-        throw new Error(`Ошибка записи: ${saveResponse.status}`);
+  function getCloudPayload() {
+    return {
+      version: 2,
+      exportedAt: new Date().toISOString(),
+      operations: state.operations,
+      categories: state.categories,
+    };
+  }
+
+  async function uploadToGoogleDrive() {
+    setSyncStatus("Открываю вход Google и выгружаю полный файл...");
+    try {
+      const accessToken = await getGoogleAccessToken("https://www.googleapis.com/auth/drive.file");
+      const payload = JSON.stringify(getCloudPayload());
+      const headers = { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" };
+      let response;
+      if (state.syncSettings.googleFileId) {
+        response = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${encodeURIComponent(state.syncSettings.googleFileId)}?uploadType=media`, {
+          method: "PATCH",
+          headers,
+          body: payload,
+        });
+      } else {
+        const boundary = `moneyflow-${getUuid()}`;
+        response = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": `multipart/related; boundary=${boundary}`,
+          },
+          body: `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify({ name: "moneyflow-data.json", mimeType: "application/json" })}\r\n--${boundary}\r\nContent-Type: application/json\r\n\r\n${payload}\r\n--${boundary}--`,
+        });
       }
-
-      state.syncSettings.lastSyncedAt = mergedPayload.lastSyncedAt;
-      state.categories = mergedCategories;
-      state.operations = mergedOperations;
-      writeJson(STORAGE_KEYS.categories, state.categories);
-      writeJson(STORAGE_KEYS.operations, state.operations);
-      await persistSyncSettings();
-      renderCategoryOptions();
-      state.currentPage = 1;
-      render();
-      setSyncStatus("Синхронизация успешно выполнена.");
+      if (!response.ok) throw new Error(`Google Drive: ${response.status}`);
+      const metadata = await response.json();
+      if (!state.syncSettings.googleFileId && metadata?.id) {
+        state.syncSettings.googleFileId = metadata.id;
+        await persistSyncSettings();
+        renderSyncSettingsForm();
+      }
+      setSyncStatus("Полный файл успешно выгружен в Google Drive.");
     } catch (error) {
-      setSyncStatus(`Синхронизация неуспешна: ${error?.message || "неизвестная ошибка"}`);
+      setSyncStatus(`Выгрузка неуспешна: ${error?.message || "неизвестная ошибка"}`);
+    }
+  }
+
+  async function downloadFromGoogleDrive() {
+    setSyncStatus("Открываю вход Google и загружаю файл...");
+    try {
+      const scope = state.syncSettings.accessMode === "reader"
+        ? "https://www.googleapis.com/auth/drive.readonly"
+        : "https://www.googleapis.com/auth/drive.file";
+      const accessToken = await getGoogleAccessToken(scope);
+      const response = await fetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(state.syncSettings.googleFileId)}?alt=media`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (!response.ok) throw new Error(`Google Drive: ${response.status}`);
+      const payload = await response.json();
+      if (!Array.isArray(payload?.operations) || !Array.isArray(payload?.categories)) {
+        throw new Error("Файл не похож на данные MoneyFlow");
+      }
+      state.operations = sanitizeOperations(payload.operations);
+      state.categories = sanitizeCategories(payload.categories);
+      state.activeCategoryFilter = new Set();
+      state.currentPage = 1;
+      writeJson(STORAGE_KEYS.operations, state.operations);
+      writeJson(STORAGE_KEYS.categories, state.categories);
+      renderCategoryOptions();
+      render();
+      setSyncStatus("Данные полностью загружены из Google Drive.");
+    } catch (error) {
+      setSyncStatus(`Загрузка неуспешна: ${error?.message || "неизвестная ошибка"}`);
     }
   }
 
