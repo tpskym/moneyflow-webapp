@@ -2466,7 +2466,7 @@
       return;
     }
     const appLink = `${location.origin}${location.pathname}`;
-    const shareMessage = `Установите M-Flow: ${appLink}\n\n1. Откройте первую ссылку и установите приложение.\n2. Затем откройте ссылку подключения:\n${connectionLink}\n\nДанные загрузятся автоматически.`;
+    const shareMessage = `Установите M-Flow: ${appLink}\n\n1. Откройте первую ссылку и установите приложение.\n2. В приложении откройте настройки ⚙️, выберите вкладку «Читатель».\n3. Вставьте вторую ссылку в поле «Ссылка подключения» и нажмите «Подключиться по ссылке»:\n${connectionLink}\n\nДанные загрузятся автоматически.`;
     try {
       if (typeof navigator.share === "function") {
         await navigator.share({
