@@ -1302,3 +1302,23 @@ textarea:focus-visible {
   width: 100%;
   height: 1px;
 }
+body.amounts-hidden .operation-amount,
+body.amounts-hidden #balance-current,
+body.amounts-hidden .chart-donut span,
+body.amounts-hidden .chart-legend-item strong {
+  color: transparent !important;
+  font-size: 0 !important;
+}
+
+body.amounts-hidden .operation-amount::after,
+body.amounts-hidden #balance-current::after,
+body.amounts-hidden .chart-donut span::after,
+body.amounts-hidden .chart-legend-item strong::after {
+  content: "•••••";
+  color: #e2e8f0;
+  font-size: 1rem;
+}
+
+body.amounts-hidden #balance-current::after {
+  font-size: clamp(2rem, 7vw, 3.2rem);
+}

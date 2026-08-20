@@ -13,7 +13,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icons/moneyflow.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="icons/moneyflow.svg" />
-    <link rel="stylesheet" href="styles.css?v=93" />
+    <link rel="stylesheet" href="styles.css?v=94" />
   </head>
   <body>
     <div class="page">
@@ -21,12 +21,9 @@
         <div class="header-heading">
           <p class="eyebrow">Личный счёт</p>
           <h1>MoneyFlow</h1>
-          <p class="subtitle">Учет доходов и расходов <span class="app-version">v93</span></p>
+          <p class="subtitle">Учет доходов и расходов <span class="app-version">v94</span></p>
         </div>
         <div class="header-tools">
-          <button
-            type="button"
-            id="instructions-toggle"
             class="btn btn--small btn--secondary sync-toggle"
             aria-label="Открыть инструкцию"
             title="Как начать"
@@ -34,17 +31,7 @@
             <span class="btn-icon" aria-hidden="true">?</span>
             <span class="sr-only">Как начать</span>
           </button>
-          <button
-            type="button"
-            id="amounts-visibility-toggle"
-            class="btn btn--small btn--secondary sync-toggle amounts-visibility-toggle"
-            aria-pressed="false"
-            aria-label="Скрыть суммы"
-            title="Скрыть суммы"
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"></path><circle cx="12" cy="12" r="2.5"></circle></svg>
-            <span class="sr-only">Скрыть суммы</span>
-          </button>
+
           <button
             type="button"
             id="sync-settings-toggle"
@@ -84,7 +71,7 @@
             <li>В Credentials создайте OAuth Client ID типа Web application.</li>
             <li>Добавьте в Authorized JavaScript origins адрес <code>https://tpskym.github.io</code>.</li>
             <li>Скопируйте Client ID в настройки приложения и нажмите «Сохранить настройки». Затем нажмите «Выгрузить»: при первом запуске она создаст JSON-файл в Google Drive и полностью запишет в него текущие данные этого устройства.</li>
-            <li>После первой выгрузки введите Gmail читателя и нажмите «Открыть доступ читателю». Затем отправьте ему показанную ссылку через мессенджер.</li>
+            <li>После первой выгрузки введите Gmail читателя и нажмите «Открыть доступ читателю». После выгрузки отправьте ему показанную ссылку лично: она содержит ключ расшифровки.</li>
           </ol>
           <button id="instructions-close" type="button" class="btn btn--secondary">Закрыть инструкцию</button>
         </section>
@@ -100,6 +87,11 @@
             <label id="google-client-id-field" class="field">
               OAuth Client ID
               <input id="google-client-id" type="text" autocomplete="off" placeholder="...apps.googleusercontent.com" />
+            </label>
+            <label class="field">
+              Пароль-фраза шифрования
+              <input id="cloud-encryption-passphrase" type="password" autocomplete="new-password" placeholder="Любая удобная фраза" />
+              <small class="field-hint">Хранится только на устройстве редактора. Читатели пароль не вводят.</small>
             </label>
             <input id="google-file-id" type="hidden" />
             <div class="sync-buttons">
@@ -117,7 +109,7 @@
               <div id="reader-invite-status" class="reader-invite-status" aria-live="polite"></div>
             </div>
             <div id="reader-connection" class="reader-connection" hidden>
-              <p>Передайте эту ссылку читателю через мессенджер или другое приложение.</p>
+              <p>Передайте ссылку только лично: она содержит ключ расшифровки. При смене пароль-фразы после выгрузки отправьте читателю новую ссылку.</p>
               <label class="field">
                 Ссылка подключения
                 <input id="reader-connection-link" type="text" readonly />
@@ -308,6 +300,6 @@
     <div id="app-notice" class="app-notice" role="status" aria-live="polite" hidden></div>
 
     <script src="https://accounts.google.com/gsi/client" async></script>
-    <script src="app.js?v=93" defer></script>
+    <script src="app.js?v=94" defer></script>
   </body>
 </html>

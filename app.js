@@ -4,6 +4,9 @@
     categories: "moneyflow-categories-v1",
     syncSettings: "moneyflow-sync-settings-v1",
     amountsHidden: "moneyflow-amounts-hidden-v1",
+    cloudPassphrase: "moneyflow-cloud-passphrase-v1",
+    cloudEncryptionKey: "moneyflow-cloud-encryption-key-v1",
+    cloudEncryptionSalt: "moneyflow-cloud-encryption-salt-v1",
   };
 
   const DEFAULT_CATEGORIES = [];
@@ -70,6 +73,7 @@
     instructionsCard: document.getElementById("instructions-section"),
     instructionsCloseButton: document.getElementById("instructions-close"),
     amountsVisibilityToggleButton: document.getElementById("amounts-visibility-toggle"),
+    cloudPassphraseInput: document.getElementById("cloud-encryption-passphrase"),
     syncGoogleClientIdInput: document.getElementById("google-client-id"),
     syncGoogleFileIdInput: document.getElementById("google-file-id"),
     syncTabs: document.getElementById("sync-tabs"),
@@ -122,6 +126,9 @@
       lastSuccessfulSyncAt: "",
     },
     amountsHidden: false,
+    cloudPassphrase: "",
+    cloudEncryptionKey: "",
+    cloudEncryptionSalt: "",
     searchText: "",
     activeTypeFilter: "all",
     activeYearFilter: new Set(),
@@ -159,8 +166,14 @@
     state.categories = sanitizeCategories(readJson(STORAGE_KEYS.categories, DEFAULT_CATEGORIES));
     state.syncSettings = sanitizeSyncSettings(readJson(STORAGE_KEYS.syncSettings, state.syncSettings));
     state.amountsHidden = readJson(STORAGE_KEYS.amountsHidden, false) === true;
+    state.cloudPassphrase = localStorage.getItem(STORAGE_KEYS.cloudPassphrase) || "";
+    state.cloudEncryptionKey = getStoredCloudEncryptionKey();
+    state.cloudEncryptionSalt = getStoredCloudEncryptionSalt();
+    if (elements.cloudPassphraseInput) elements.cloudPassphraseInput.value = state.cloudPassphrase;
+    applyAmountsVisibility();
     const connectionSettings = consumeCloudConnectionSettings();
     if (connectionSettings) {
+      setCloudEncryptionKey(connectionSettings.encryptionKey);
       state.syncSettings = sanitizeSyncSettings({ ...state.syncSettings, ...connectionSettings, accessMode: "unknown" });
       await persistSyncSettings();
       activeSyncTab = "reader";
@@ -497,6 +510,13 @@
   async function onSyncSave({ close = false } = {}) {
     const googleClientId = (elements.syncGoogleClientIdInput?.value || state.syncSettings.googleClientId || "").trim();
     const googleFileId = (elements.syncGoogleFileIdInput?.value || state.syncSettings.googleFileId || "").trim();
+    const cloudPassphrase = elements.cloudPassphraseInput?.value ?? state.cloudPassphrase;
+    const passphraseChanged = cloudPassphrase !== state.cloudPassphrase;
+    if (passphraseChanged) {
+      state.cloudPassphrase = cloudPassphrase;
+      localStorage.setItem(STORAGE_KEYS.cloudPassphrase, state.cloudPassphrase);
+      resetCloudEncryptionMaterial();
+    }
     state.syncSettings = sanitizeSyncSettings({
       googleClientId,
       googleFileId,
@@ -505,7 +525,7 @@
     });
     await persistSyncSettings();
     updateCloudAccessUI();
-    setSyncStatus("Настройки сохранены.");
+    setSyncStatus(passphraseChanged ? "Пароль-фраза сохранена. Выгрузите данные и отправьте читателям новую ссылку." : "Настройки сохранены.");
     if (close) {
       updateSyncSettingsVisibility(false);
     }
@@ -518,6 +538,9 @@
 
     state.operations = [];
     state.categories = [];
+    state.cloudPassphrase = "";
+    localStorage.removeItem(STORAGE_KEYS.cloudPassphrase);
+    resetCloudEncryptionMaterial();
     state.syncSettings = {
       googleClientId: "",
       googleFileId: "",
@@ -806,9 +829,13 @@
   function onAmountsVisibilityToggle() {
     state.amountsHidden = !state.amountsHidden;
     writeJson(STORAGE_KEYS.amountsHidden, state.amountsHidden);
+    applyAmountsVisibility();
+  }
+
+  function applyAmountsVisibility() {
+    document.body.classList.toggle("amounts-hidden", state.amountsHidden);
     updateAmountsVisibilityToggle();
     setAmountValue(elements.amountInput?.value || "");
-    render();
   }
 
   function updateAmountsVisibilityToggle() {
@@ -1723,10 +1750,10 @@
     const legend = entries.map((entry) => {
       const color = entry.category?.color || "#64748b";
       const percent = Math.round((entry.amount / total) * 100);
-      const summary = state.amountsHidden ? "•••••" : `${formatMoney(entry.amount)} ₽ · ${percent}%`;
+      const summary = `${formatMoney(entry.amount)} ₽ · ${percent}%`;
       return `<div class="chart-legend-item"><span class="chart-dot" style="background:${color}"></span><span>${escapeHtml(entry.name)}</span><strong>${summary}</strong></div>`;
     }).join("");
-    const chartTotal = state.amountsHidden ? "•••••" : `${formatMoney(total)} ₽`;
+    const chartTotal = `${formatMoney(total)} ₽`;
     container.innerHTML = `<div class="chart-donut" style="background:conic-gradient(${segments.join(",")})"><span>${chartTotal}</span></div><div class="chart-legend">${legend}</div>`;
   }
 
@@ -1748,7 +1775,7 @@
       const selectedYears = getActiveYearFilterLabel();
       elements.balanceTitle.textContent = selectedYears ? `Текущий остаток (${selectedYears})` : "Текущий остаток";
     }
-    elements.balanceCurrent.textContent = state.amountsHidden ? "•••••" : `${formatMoney(filteredBalance)} ₽`;
+    elements.balanceCurrent.textContent = `${formatMoney(filteredBalance)} ₽`;
   }
 
   function getActiveYearFilterLabel() {
@@ -1944,7 +1971,7 @@
             ${description ? `<div class="operation-description">${escapeHtml(description)}</div>` : ""}
           </div>
           <div class="operation-amount ${amountClass}">
-            ${state.amountsHidden ? "•••••" : `${signChar} ${formatMoney(visibleAmount)} ₽`}
+            ${signChar} ${formatMoney(visibleAmount)} ₽
           </div>
         </article>
       `);
@@ -2292,15 +2319,15 @@
     const url = new URL(location.href);
     const googleClientId = url.searchParams.get("mf_google_client") || "";
     const googleFileId = url.searchParams.get("mf_google_file") || "";
-    if (!googleClientId || !googleFileId) return null;
+    const encryptionKey = new URLSearchParams(url.hash.slice(1)).get("mf_key") || "";
+    if (!googleClientId || !googleFileId || !isValidCloudEncryptionKey(encryptionKey)) return null;
 
     url.searchParams.delete("mf_google_client");
     url.searchParams.delete("mf_google_file");
-    const cleanUrl = `${url.pathname}${url.search}${url.hash}`;
-    history.replaceState({}, document.title, cleanUrl);
-    return { googleClientId, googleFileId };
+    url.hash = "";
+    window.history.replaceState({}, "", url.toString());
+    return { googleClientId, googleFileId, encryptionKey };
   }
-
   async function onApplyReaderConnectionLink() {
     const value = (elements.readerLinkInput?.value || "").trim();
     let url;
@@ -2310,14 +2337,13 @@
       setSyncStatus("Вставьте корректную ссылку подключения из приложения MoneyFlow.");
       return;
     }
-
     const googleClientId = url.searchParams.get("mf_google_client") || "";
     const googleFileId = url.searchParams.get("mf_google_file") || "";
-    if (!googleClientId || !googleFileId) {
-      setSyncStatus("В ссылке нет данных подключения MoneyFlow.");
+    const encryptionKey = new URLSearchParams(url.hash.slice(1)).get("mf_key") || "";
+    if (!googleClientId || !googleFileId || !isValidCloudEncryptionKey(encryptionKey)) {
+      setSyncStatus("В ссылке нет корректного ключа подключения MoneyFlow.");
       return;
     }
-
     state.syncSettings = sanitizeSyncSettings({
       ...state.syncSettings,
       googleClientId,
@@ -2325,6 +2351,7 @@
       accessMode: "unknown",
       googleAccountEmail: "",
     });
+    setCloudEncryptionKey(encryptionKey);
     await persistSyncSettings();
     renderSyncSettingsForm();
     updateCloudAccessUI();
@@ -2333,12 +2360,13 @@
   }
 
   function getReaderConnectionLink() {
+    if (!isValidCloudEncryptionKey(state.cloudEncryptionKey)) return "";
     const url = new URL(location.origin + location.pathname);
     url.searchParams.set("mf_google_client", state.syncSettings.googleClientId);
     url.searchParams.set("mf_google_file", state.syncSettings.googleFileId);
+    url.hash = `mf_key=${encodeURIComponent(state.cloudEncryptionKey)}`;
     return url.toString();
   }
-
   async function onInviteReader() {
     const email = String(elements.readerEmailInput?.value || "").trim();
     if (!/^\S+@\S+\.\S+$/.test(email)) {
@@ -2540,6 +2568,95 @@
     }
   }
 
+  function getStoredCloudEncryptionKey() {
+    const key = localStorage.getItem(STORAGE_KEYS.cloudEncryptionKey) || "";
+    return isValidCloudEncryptionKey(key) ? key : "";
+  }
+
+  function getStoredCloudEncryptionSalt() {
+    const salt = localStorage.getItem(STORAGE_KEYS.cloudEncryptionSalt) || "";
+    try {
+      return base64ToBytes(salt).byteLength === 16 ? salt : "";
+    } catch {
+      return "";
+    }
+  }
+
+  function isValidCloudEncryptionKey(key) {
+    try {
+      return base64ToBytes(String(key || "")).byteLength === 32;
+    } catch {
+      return false;
+    }
+  }
+
+  function setCloudEncryptionKey(key) {
+    if (!isValidCloudEncryptionKey(key)) return false;
+    state.cloudEncryptionKey = key;
+    localStorage.setItem(STORAGE_KEYS.cloudEncryptionKey, key);
+    return true;
+  }
+
+  function resetCloudEncryptionMaterial() {
+    state.cloudEncryptionKey = "";
+    state.cloudEncryptionSalt = "";
+    localStorage.removeItem(STORAGE_KEYS.cloudEncryptionKey);
+    localStorage.removeItem(STORAGE_KEYS.cloudEncryptionSalt);
+  }
+
+  async function ensureEditorEncryptionKey() {
+    if (isValidCloudEncryptionKey(state.cloudEncryptionKey)) return state.cloudEncryptionKey;
+    if (!state.cloudPassphrase) throw new Error("Укажите пароль-фразу шифрования в настройках редактора");
+    if (typeof crypto === "undefined" || !crypto.subtle || !crypto.getRandomValues) throw new Error("Браузер не поддерживает шифрование файла");
+    let salt = state.cloudEncryptionSalt;
+    if (!salt) {
+      const saltBytes = new Uint8Array(16);
+      crypto.getRandomValues(saltBytes);
+      salt = bytesToBase64(saltBytes);
+      state.cloudEncryptionSalt = salt;
+      localStorage.setItem(STORAGE_KEYS.cloudEncryptionSalt, salt);
+    }
+    const material = await crypto.subtle.importKey("raw", new TextEncoder().encode(state.cloudPassphrase), "PBKDF2", false, ["deriveKey"]);
+    const derivedKey = await crypto.subtle.deriveKey(
+      { name: "PBKDF2", salt: base64ToBytes(salt), iterations: 600000, hash: "SHA-256" },
+      material,
+      { name: "AES-GCM", length: 256 },
+      true,
+      ["encrypt", "decrypt"],
+    );
+    const key = bytesToBase64(new Uint8Array(await crypto.subtle.exportKey("raw", derivedKey)));
+    setCloudEncryptionKey(key);
+    return key;
+  }
+
+  async function encryptCloudPayload(payload) {
+    const encryptionKey = await ensureEditorEncryptionKey();
+    const iv = new Uint8Array(12);
+    crypto.getRandomValues(iv);
+    const key = await crypto.subtle.importKey("raw", base64ToBytes(encryptionKey), { name: "AES-GCM" }, false, ["encrypt"]);
+    const encrypted = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, new TextEncoder().encode(JSON.stringify(payload)));
+    return {
+      format: "moneyflow-encrypted-v1",
+      cipher: "AES-256-GCM",
+      kdf: { name: "PBKDF2", hash: "SHA-256", iterations: 600000, salt: state.cloudEncryptionSalt },
+      iv: bytesToBase64(iv),
+      ciphertext: bytesToBase64(new Uint8Array(encrypted)),
+    };
+  }
+
+  async function decryptCloudPayload(encryptedPayload) {
+    if (Array.isArray(encryptedPayload?.operations) && Array.isArray(encryptedPayload?.categories)) return encryptedPayload;
+    if (encryptedPayload?.format !== "moneyflow-encrypted-v1") throw new Error("Файл не похож на зашифрованные данные MoneyFlow");
+    if (!isValidCloudEncryptionKey(state.cloudEncryptionKey)) throw new Error("В приложении нет ключа. Откройте актуальную ссылку подключения от редактора.");
+    try {
+      const key = await crypto.subtle.importKey("raw", base64ToBytes(state.cloudEncryptionKey), { name: "AES-GCM" }, false, ["decrypt"]);
+      const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv: base64ToBytes(encryptedPayload.iv) }, key, base64ToBytes(encryptedPayload.ciphertext));
+      return JSON.parse(new TextDecoder().decode(decrypted));
+    } catch {
+      throw new Error("Не удалось расшифровать файл. Откройте актуальную ссылку подключения от редактора.");
+    }
+  }
+
   function getCloudPayload() {
     return {
       version: 2,
@@ -2550,10 +2667,10 @@
   }
 
   async function uploadToGoogleDrive() {
-    setSyncStatus("Открываю вход Google и выгружаю полный файл...");
+    setSyncStatus("Открываю вход Google и шифрую полный файл...");
     try {
       const accessToken = await getGoogleAccessToken("https://www.googleapis.com/auth/drive.file");
-      const payload = JSON.stringify(getCloudPayload());
+      const payload = JSON.stringify(await encryptCloudPayload(getCloudPayload()));
       const headers = { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" };
       let response;
       if (state.syncSettings.googleFileId) {
@@ -2584,7 +2701,7 @@
       renderSyncSettingsForm();
       updateCloudAccessUI();
       renderLastSuccessfulSync();
-      setSyncStatus("Полный файл успешно выгружен в Google Drive.");
+      setSyncStatus("Зашифрованный файл успешно выгружен в Google Drive.");
       showAppNotice("Данные успешно выгружены в облако.");
     } catch (error) {
       const message = `Выгрузка неуспешна: ${error?.message || "неизвестная ошибка"}`;
@@ -2640,7 +2757,8 @@
           ? "Нет доступа к данным. Войдите под Gmail, которому редактор выдал доступ."
           : `Google Drive: ${response.status}`);
       }
-      const payload = await response.json();
+      const encryptedPayload = await response.json();
+      const payload = await decryptCloudPayload(encryptedPayload);
       if (!Array.isArray(payload?.operations) || !Array.isArray(payload?.categories)) {
         throw new Error("Файл не похож на данные MoneyFlow");
       }
