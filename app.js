@@ -2209,8 +2209,13 @@
       await persistSyncSettings();
       renderLastSuccessfulSync();
       setSyncStatus("Данные из облака загружены. Локальные операции и категории заменены.");
+      showAppNotice(state.syncSettings.accessMode === "reader"
+        ? "Данные синхронизированы."
+        : "Данные из облака загружены.");
     } catch (error) {
-      setSyncStatus(`Загрузка неуспешна: ${error?.message || "неизвестная ошибка"}`);
+      const message = `Загрузка неуспешна: ${error?.message || "неизвестная ошибка"}`;
+      setSyncStatus(message);
+      showAppNotice(message, "error");
     }
   }
 
