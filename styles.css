@@ -51,6 +51,12 @@ body {
   gap: 8px;
 }
 
+.generate-sample-data {
+  min-width: 108px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
 .sync-actions {
   grid-column: 1 / -1;
   margin-top: 0;
