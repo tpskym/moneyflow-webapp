@@ -255,7 +255,6 @@
     elements.dateToInput?.addEventListener("input", onDateRangeInput);
     elements.chartsToggleButton?.addEventListener("click", onChartsToggle);
     elements.categoryFilterContainer?.addEventListener("click", onCategoryFilterClick);
-    elements.loadMoreOperationsButton.addEventListener("click", loadMoreOperations);
     elements.readerLinkApplyButton?.addEventListener("click", onApplyReaderConnectionLink);
     elements.syncEditorTabButton?.addEventListener("click", () => setActiveSyncTab("editor"));
     elements.syncReaderTabButton?.addEventListener("click", () => setActiveSyncTab("reader"));
