@@ -43,6 +43,10 @@
     operationDateInput: document.getElementById("operation-date"),
     balanceCurrent: document.getElementById("balance-current"),
     lastSuccessfulSync: document.getElementById("last-successful-sync"),
+    chartsToggleButton: document.getElementById("charts-toggle"),
+    categoryCharts: document.getElementById("category-charts"),
+    incomeCategoryChart: document.getElementById("income-category-chart"),
+    expenseCategoryChart: document.getElementById("expense-category-chart"),
     searchSection: document.getElementById("search-section"),
     searchToggleButton: document.getElementById("search-toggle"),
     searchField: document.getElementById("search-field"),
@@ -53,6 +57,10 @@
     balanceTitle: document.getElementById("balance-title"),
     loadMoreOperationsButton: document.getElementById("load-more-operations"),
     yearFilterContainer: document.getElementById("year-filters"),
+    monthFilterContainer: document.getElementById("month-filters"),
+    dayFilterContainer: document.getElementById("day-filters"),
+    dateFromInput: document.getElementById("date-from"),
+    dateToInput: document.getElementById("date-to"),
     categoryFilterContainer: document.getElementById("category-filters"),
     syncToggleButton: document.getElementById("sync-settings-toggle"),
     syncSettingsCard: document.getElementById("sync-settings-section"),
@@ -111,6 +119,10 @@
     searchText: "",
     activeTypeFilter: "all",
     activeYearFilter: new Set(),
+    activeMonthFilter: new Set(),
+    activeDayFilter: new Set(),
+    dateFrom: "",
+    dateTo: "",
     activeCategoryFilter: new Set(),
     operationType: "income",
     currentPage: 1,
@@ -129,6 +141,9 @@
   let longPressHandledOperationId = null;
   let activeSyncTab = "editor";
   let appNoticeTimer;
+  let chartsOpen = false;
+  let periodDrag = null;
+  let ignorePeriodClick = false;
 
   async function main() {
     enableLiveReload();
@@ -207,6 +222,17 @@
     elements.searchToggleButton?.addEventListener("click", onSearchToggle);
     elements.searchInput.addEventListener("input", onSearchInput);
     elements.yearFilterContainer?.addEventListener("click", onYearFilterClick);
+    elements.monthFilterContainer?.addEventListener("click", onPeriodFilterClick);
+    elements.dayFilterContainer?.addEventListener("click", onPeriodFilterClick);
+    [elements.monthFilterContainer, elements.dayFilterContainer].forEach((container) => {
+      container?.addEventListener("pointerdown", onPeriodPointerDown);
+      container?.addEventListener("pointermove", onPeriodPointerMove);
+      container?.addEventListener("pointerup", onPeriodPointerUp);
+      container?.addEventListener("pointercancel", onPeriodPointerUp);
+    });
+    elements.dateFromInput?.addEventListener("input", onDateRangeInput);
+    elements.dateToInput?.addEventListener("input", onDateRangeInput);
+    elements.chartsToggleButton?.addEventListener("click", onChartsToggle);
     elements.categoryFilterContainer?.addEventListener("click", onCategoryFilterClick);
     elements.loadMoreOperationsButton.addEventListener("click", loadMoreOperations);
     elements.readerLinkApplyButton?.addEventListener("click", onApplyReaderConnectionLink);
@@ -286,6 +312,110 @@
     }
     state.currentPage = 1;
     render();
+  }
+
+  function onPeriodFilterClick(event) {
+    if (ignorePeriodClick) {
+      ignorePeriodClick = false;
+      return;
+    }
+    const button = event.target.closest("[data-period-kind][data-period-value]");
+    if (!button) return;
+    const kind = button.dataset.periodKind;
+    const value = Number(button.dataset.periodValue);
+    if (!Number.isInteger(value)) return;
+    togglePeriodValue(kind, value);
+    state.currentPage = 1;
+    render();
+  }
+
+  function onPeriodPointerDown(event) {
+    const button = event.target.closest("[data-period-kind][data-period-value]");
+    if (!button || event.pointerType === "mouse" && event.button !== 0) return;
+    const kind = button.dataset.periodKind;
+    const value = Number(button.dataset.periodValue);
+    if (!Number.isInteger(value)) return;
+    periodDrag = {
+      kind,
+      value,
+      mode: isPeriodValueSelected(kind, value) ? "remove" : "add",
+      visited: new Set([value]),
+      didDrag: false,
+    };
+    event.currentTarget?.setPointerCapture?.(event.pointerId);
+  }
+
+  function onPeriodPointerMove(event) {
+    if (!periodDrag) return;
+    const target = document.elementFromPoint(event.clientX, event.clientY)?.closest("[data-period-kind][data-period-value]");
+    if (!target || target.dataset.periodKind !== periodDrag.kind) return;
+    const value = Number(target.dataset.periodValue);
+    if (!Number.isInteger(value) || periodDrag.visited.has(value)) return;
+    if (!periodDrag.didDrag) {
+      periodDrag.didDrag = true;
+      applyPeriodValue(periodDrag.kind, periodDrag.value, periodDrag.mode);
+    }
+    periodDrag.visited.add(value);
+    applyPeriodValue(periodDrag.kind, value, periodDrag.mode);
+  }
+
+  function onPeriodPointerUp(event) {
+    if (!periodDrag) return;
+    const wasDragging = periodDrag.didDrag;
+    periodDrag = null;
+    event.currentTarget?.releasePointerCapture?.(event.pointerId);
+    if (!wasDragging) return;
+    state.currentPage = 1;
+    ignorePeriodClick = true;
+    render();
+    setTimeout(() => { ignorePeriodClick = false; }, 250);
+  }
+
+  function togglePeriodValue(kind, value) {
+    const values = kind === "month" ? state.activeMonthFilter : state.activeDayFilter;
+    if (values.has(value)) values.delete(value);
+    else values.add(value);
+    normalizePeriodSelection();
+  }
+
+  function applyPeriodValue(kind, value, mode) {
+    const values = kind === "month" ? state.activeMonthFilter : state.activeDayFilter;
+    if (mode === "add") values.add(value);
+    else values.delete(value);
+    normalizePeriodSelection();
+  }
+
+  function isPeriodValueSelected(kind, value) {
+    return (kind === "month" ? state.activeMonthFilter : state.activeDayFilter).has(value);
+  }
+
+  function normalizePeriodSelection() {
+    if (state.activeYearFilter.size !== 1) {
+      state.activeMonthFilter.clear();
+      state.activeDayFilter.clear();
+      return;
+    }
+    if (state.activeMonthFilter.size !== 1) state.activeDayFilter.clear();
+  }
+
+  function onDateRangeInput() {
+    state.dateFrom = elements.dateFromInput?.value || "";
+    state.dateTo = elements.dateToInput?.value || "";
+    state.currentPage = 1;
+    render();
+  }
+
+  function onChartsToggle() {
+    chartsOpen = !chartsOpen;
+    updateChartsVisibility();
+  }
+
+  function updateChartsVisibility() {
+    if (elements.categoryCharts) elements.categoryCharts.hidden = !chartsOpen;
+    if (elements.chartsToggleButton) {
+      elements.chartsToggleButton.setAttribute("aria-expanded", String(chartsOpen));
+      elements.chartsToggleButton.textContent = chartsOpen ? "Скрыть диаграммы" : "Диаграммы";
+    }
   }
 
   function onCategoryFilterClick(event) {
@@ -1179,6 +1309,8 @@
     const filteredBalance = filtered.reduce((sum, operation) => sum + signedAmount(operation), 0);
 
     updateBalances(filteredBalance);
+    renderPeriodFilters();
+    renderCategoryCharts(filtered);
     renderYearFilters();
     renderCategoryFilters();
     renderCategoryOptions();
@@ -1238,11 +1370,32 @@
   }
 
   function getOperationsByYear(operations) {
-    if (!(state.activeYearFilter instanceof Set) || state.activeYearFilter.size === 0) {
-      return [...operations];
-    }
+    return operations.filter((operation) => matchesOperationPeriod(operation));
+  }
 
-    return operations.filter((operation) => state.activeYearFilter.has(getOperationYear(operation)));
+  function matchesOperationPeriod(operation) {
+    const operationDate = parseDateFromValue(getOperationDateValue(operation));
+    if (Number.isNaN(operationDate.getTime())) return false;
+    const year = operationDate.getFullYear();
+    const month = operationDate.getMonth() + 1;
+    const day = operationDate.getDate();
+    if (state.activeYearFilter.size && !state.activeYearFilter.has(year)) return false;
+    if (state.activeYearFilter.size === 1 && state.activeMonthFilter.size && !state.activeMonthFilter.has(month)) return false;
+    if (state.activeYearFilter.size === 1 && state.activeMonthFilter.size === 1 && state.activeDayFilter.size && !state.activeDayFilter.has(day)) return false;
+
+    const normalizedOperationDate = new Date(year, month - 1, day).getTime();
+    const from = getDateBoundary(state.dateFrom, false);
+    const to = getDateBoundary(state.dateTo, true);
+    if (from !== null && normalizedOperationDate < from) return false;
+    if (to !== null && normalizedOperationDate > to) return false;
+    return true;
+  }
+
+  function getDateBoundary(value, endOfDay) {
+    if (!value || !String(value).trim()) return null;
+    const parsed = parseDateFromValue(value);
+    if (Number.isNaN(parsed.getTime())) return null;
+    return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate(), endOfDay ? 23 : 0, endOfDay ? 59 : 0, endOfDay ? 59 : 0, endOfDay ? 999 : 0).getTime();
   }
 
   function getOperationYear(operation) {
@@ -1297,6 +1450,79 @@
       if (allChip) allChip.classList.add("active");
       state.activeYearFilter = new Set();
     }
+  }
+
+  function renderPeriodFilters() {
+    const selectedYears = state.activeYearFilter instanceof Set ? [...state.activeYearFilter] : [];
+    if (selectedYears.length !== 1) {
+      state.activeMonthFilter.clear();
+      state.activeDayFilter.clear();
+      if (elements.monthFilterContainer) elements.monthFilterContainer.hidden = true;
+      if (elements.dayFilterContainer) elements.dayFilterContainer.hidden = true;
+      return;
+    }
+
+    const monthNames = ["Янв", "Фев", "Мар", "Апр", "Май", "Июн", "Июл", "Авг", "Сен", "Окт", "Ноя", "Дек"];
+    if (elements.monthFilterContainer) {
+      elements.monthFilterContainer.hidden = false;
+      elements.monthFilterContainer.innerHTML = `<span class="period-filter-label">Месяцы</span>${monthNames.map((name, index) => `<button type="button" class="chip ${state.activeMonthFilter.has(index + 1) ? "active" : ""}" data-period-kind="month" data-period-value="${index + 1}">${name}</button>`).join("")}`;
+    }
+
+    if (state.activeMonthFilter.size !== 1) {
+      state.activeDayFilter.clear();
+      if (elements.dayFilterContainer) elements.dayFilterContainer.hidden = true;
+      return;
+    }
+
+    const month = [...state.activeMonthFilter][0];
+    const daysInMonth = new Date(selectedYears[0], month, 0).getDate();
+    if (elements.dayFilterContainer) {
+      elements.dayFilterContainer.hidden = false;
+      elements.dayFilterContainer.innerHTML = `<span class="period-filter-label">Дни</span>${Array.from({ length: daysInMonth }, (_, index) => index + 1).map((day) => `<button type="button" class="chip ${state.activeDayFilter.has(day) ? "active" : ""}" data-period-kind="day" data-period-value="${day}">${day}</button>`).join("")}`;
+    }
+  }
+
+  function renderCategoryCharts(operations) {
+    renderCategoryChart(elements.incomeCategoryChart, operations, "income");
+    renderCategoryChart(elements.expenseCategoryChart, operations, "expense");
+  }
+
+  function renderCategoryChart(container, operations, type) {
+    if (!container) return;
+    const totals = new Map();
+    operations.filter((operation) => operation.type === type).forEach((operation) => {
+      const key = operation.categoryId || "uncategorized";
+      totals.set(key, round2((totals.get(key) || 0) + Math.abs(Number(operation.amount) || 0)));
+    });
+    const entries = [...totals.entries()]
+      .map(([categoryId, amount]) => ({
+        categoryId,
+        amount,
+        category: getCategoryById(categoryId),
+        name: getCategoryName(categoryId),
+      }))
+      .filter((entry) => entry.amount > 0)
+      .sort((left, right) => right.amount - left.amount);
+    const total = entries.reduce((sum, entry) => sum + entry.amount, 0);
+    if (!total) {
+      container.innerHTML = `<div class="chart-empty">Нет операций</div>`;
+      return;
+    }
+
+    let cursor = 0;
+    const segments = entries.map((entry) => {
+      const next = cursor + (entry.amount / total) * 360;
+      const color = entry.category?.color || "#64748b";
+      const segment = `${color} ${cursor.toFixed(2)}deg ${next.toFixed(2)}deg`;
+      cursor = next;
+      return segment;
+    });
+    const legend = entries.map((entry) => {
+      const color = entry.category?.color || "#64748b";
+      const percent = Math.round((entry.amount / total) * 100);
+      return `<div class="chart-legend-item"><span class="chart-dot" style="background:${color}"></span><span>${escapeHtml(entry.name)}</span><strong>${formatMoney(entry.amount)} ₽ · ${percent}%</strong></div>`;
+    }).join("");
+    container.innerHTML = `<div class="chart-donut" style="background:conic-gradient(${segments.join(",")})"><span>${formatMoney(total)} ₽</span></div><div class="chart-legend">${legend}</div>`;
   }
 
   function syncApplyTypeFromState() {

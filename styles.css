@@ -529,6 +529,109 @@ textarea:focus-visible {
   width: 100%;
 }
 
+.balance-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.balance-toolbar h2 {
+  margin: 0;
+}
+
+.charts-toggle {
+  min-height: 40px;
+  width: auto;
+  padding: 0 14px;
+}
+
+.category-charts[hidden] {
+  display: none;
+}
+
+.category-charts {
+  display: grid;
+  gap: 18px;
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+
+.category-chart-section h3 {
+  margin: 0 0 12px;
+  font-size: 15px;
+}
+
+.category-chart {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+}
+
+.chart-donut {
+  width: 112px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  position: relative;
+}
+
+.chart-donut::after {
+  content: "";
+  position: absolute;
+  inset: 23px;
+  border-radius: 50%;
+  background: var(--panel-soft);
+}
+
+.chart-donut span {
+  position: relative;
+  z-index: 1;
+  width: 66px;
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 750;
+  line-height: 1.15;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.chart-legend {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.chart-legend-item {
+  display: grid;
+  grid-template-columns: 9px minmax(0, 1fr) auto;
+  gap: 7px;
+  align-items: center;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.chart-legend-item strong {
+  color: var(--text);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.chart-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+.chart-empty {
+  padding: 12px 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
 .operations-toolbar {
   display: flex;
   align-items: center;
@@ -587,6 +690,47 @@ textarea:focus-visible {
   padding-bottom: 0;
   margin-top: 8px;
   margin-bottom: 10px;
+}
+
+.period-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+}
+
+.period-filters[hidden] {
+  display: none;
+}
+
+.period-filter-label {
+  flex: 0 0 100%;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.date-range {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 12px 0;
+}
+
+.date-range .field {
+  gap: 6px;
+}
+
+@media (max-width: 420px) {
+  .category-chart {
+    grid-template-columns: 1fr;
+  }
+
+  .chart-donut {
+    margin: 0 auto;
+  }
 }
 
 .chips {

@@ -13,7 +13,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icons/moneyflow.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="icons/moneyflow.svg" />
-    <link rel="stylesheet" href="styles.css?v=89" />
+    <link rel="stylesheet" href="styles.css?v=90" />
   </head>
   <body>
     <div class="page">
@@ -21,7 +21,7 @@
         <div class="header-heading">
           <p class="eyebrow">Личный счёт</p>
           <h1>MoneyFlow</h1>
-          <p class="subtitle">Учет доходов и расходов <span class="app-version">v89</span></p>
+          <p class="subtitle">Учет доходов и расходов <span class="app-version">v90</span></p>
         </div>
         <div class="header-tools">
           <button
@@ -217,12 +217,25 @@
         </div>
 
         <section class="card overview-card">
-          <h2>Баланс</h2>
+          <div class="balance-toolbar">
+            <h2>Баланс</h2>
+            <button id="charts-toggle" type="button" class="btn btn--secondary charts-toggle" aria-expanded="false">Диаграммы</button>
+          </div>
           <div class="summary">
             <article>
               <p id="balance-title">Текущий остаток</p>
               <strong id="balance-current">0 ₽</strong>
             </article>
+          </div>
+          <div id="category-charts" class="category-charts" hidden>
+            <section class="category-chart-section">
+              <h3>Доходы по категориям</h3>
+              <div id="income-category-chart" class="category-chart"></div>
+            </section>
+            <section class="category-chart-section">
+              <h3>Расходы по категориям</h3>
+              <div id="expense-category-chart" class="category-chart"></div>
+            </section>
           </div>
         </section>
 
@@ -246,6 +259,19 @@
             </div>
             <div id="search-filters" class="search-filters" hidden>
               <div id="year-filters" class="year-filters" role="tablist" aria-label="Фильтр по году"></div>
+              <div id="month-filters" class="period-filters" role="group" aria-label="Фильтр по месяцам" hidden></div>
+              <div id="day-filters" class="period-filters" role="group" aria-label="Фильтр по дням" hidden></div>
+
+              <div class="date-range" aria-label="Диапазон дат">
+                <label class="field">
+                  Дата от
+                  <input id="date-from" type="text" inputmode="numeric" maxlength="10" autocomplete="off" placeholder="ДД.ММ.ГГГГ" />
+                </label>
+                <label class="field">
+                  Дата до
+                  <input id="date-to" type="text" inputmode="numeric" maxlength="10" autocomplete="off" placeholder="ДД.ММ.ГГГГ" />
+                </label>
+              </div>
 
               <div class="chips" role="tablist" aria-label="Фильтр по типу">
                 <button type="button" class="chip active" data-type="all">Все</button>
@@ -268,6 +294,6 @@
     <div id="app-notice" class="app-notice" role="status" aria-live="polite" hidden></div>
 
     <script src="https://accounts.google.com/gsi/client" async></script>
-    <script src="app.js?v=89" defer></script>
+    <script src="app.js?v=90" defer></script>
   </body>
 </html>
