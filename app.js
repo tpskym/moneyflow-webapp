@@ -29,6 +29,8 @@
     descriptionInput: document.getElementById("operation-description"),
     operationDateInput: document.getElementById("operation-date"),
     balanceCurrent: document.getElementById("balance-current"),
+    searchToggleButton: document.getElementById("search-toggle"),
+    searchField: document.getElementById("search-field"),
     searchInput: document.getElementById("search-input"),
     operationsList: document.getElementById("operations-list"),
     chipContainer: document.querySelector(".chips"),
@@ -90,6 +92,7 @@
     syncApplyTypeFromState();
     updateSyncSettingsVisibility(false);
     updateQuickAddVisibility(false);
+    updateSearchVisibility(false);
     setQuickAddDate(getTodayInputDate());
     renderCategoryOptions();
     renderYearFilters();
@@ -136,6 +139,7 @@
     elements.categoryPickerPrevBtn.addEventListener("click", () => goCategoryPage(-1));
     elements.categoryPickerNextBtn.addEventListener("click", () => goCategoryPage(1));
     elements.categoryPickerList.addEventListener("click", onCategoryPickerSelect);
+    elements.searchToggleButton?.addEventListener("click", onSearchToggle);
     elements.searchInput.addEventListener("input", onSearchInput);
     elements.yearFilterContainer?.addEventListener("click", onYearFilterClick);
     elements.prevPageBtn.addEventListener("click", () => goPage(-1));
@@ -178,6 +182,11 @@
       state.currentPage = 1;
       render();
     }, 280);
+  }
+
+  function onSearchToggle() {
+    const shouldOpen = Boolean(elements.searchField?.hidden);
+    updateSearchVisibility(shouldOpen, { focus: shouldOpen });
   }
 
   function onYearFilterClick(event) {
@@ -1158,6 +1167,18 @@
     elements.quickAddToggleButton.setAttribute("aria-label", label);
     elements.quickAddToggleButton.setAttribute("title", label);
     elements.quickAddToggleButton.classList.toggle("is-open", open);
+  }
+
+  function updateSearchVisibility(open, { focus = false } = {}) {
+    if (!elements.searchField || !elements.searchToggleButton) return;
+
+    elements.searchField.hidden = !open;
+    elements.searchToggleButton.setAttribute("aria-expanded", String(open));
+    elements.searchToggleButton.classList.toggle("is-open", open);
+    elements.searchToggleButton.textContent = open ? "Скрыть поиск" : "Поиск";
+    if (focus) {
+      elements.searchInput?.focus();
+    }
   }
 
   function updatePager(totalItems, totalPages) {

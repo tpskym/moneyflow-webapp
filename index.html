@@ -137,10 +137,15 @@
 
         <section class="card">
           <div class="search">
-            <label class="field">
+            <button id="search-toggle" type="button" class="btn btn--secondary search-toggle" aria-expanded="false">
               Поиск
-              <input id="search-input" type="search" inputmode="search" placeholder="По описанию, категории или сумме" />
-            </label>
+            </button>
+            <div id="search-field" class="search-field" hidden>
+              <label class="field">
+                Поиск
+                <input id="search-input" type="search" inputmode="search" placeholder="По описанию, категории или сумме" />
+              </label>
+            </div>
             <div id="year-filters" class="year-filters" role="tablist" aria-label="Фильтр по году"></div>
 
             <div class="chips" role="tablist" aria-label="Фильтр по типу">
