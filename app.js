@@ -1184,9 +1184,8 @@
     for (const operation of operations) {
       const dayLabel = formatOperationDate(operation);
       const amountClass = operation.type;
-      const sign = operation.type === "expense" ? -1 : 1;
       const signChar = operation.type === "income" ? "+" : "-";
-      const visibleAmount = sign * Math.abs(operation.amount);
+      const visibleAmount = Math.abs(operation.amount);
       const category = operation.categoryName || "Без категории";
       const description = operation.description || "";
       const menuActionLabel = `Действия для операции "${escapeHtml(category)}"`;
