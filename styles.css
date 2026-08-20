@@ -683,15 +683,16 @@ textarea:focus-visible {
   border: 1px solid var(--line);
   border-radius: 14px;
   background: rgba(30, 41, 59, 0.72);
-  color: var(--muted);
+  color: #cbd5e1;
   font: inherit;
   font-weight: 750;
 }
 
 .sync-tab.is-active {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #082033;
+  background: linear-gradient(135deg, #0891b2, #2563eb);
+  border-color: #67e8f9;
+  box-shadow: 0 0 0 2px rgba(103, 232, 249, 0.24), 0 10px 24px rgba(14, 116, 144, 0.32);
+  color: #f8fafc;
 }
 
 .sync-tab-panel[hidden] {
