@@ -86,6 +86,7 @@
       googleClientId: "",
       googleFileId: "",
       accessMode: "writer",
+      googleAccountEmail: "",
       lastSuccessfulSyncAt: "",
     },
     searchText: "",
@@ -328,6 +329,7 @@
       googleClientId,
       googleFileId,
       accessMode: googleFileId === state.syncSettings.googleFileId ? state.syncSettings.accessMode : "unknown",
+      googleAccountEmail: state.syncSettings.googleAccountEmail,
     });
     await persistSyncSettings();
     updateCloudAccessUI();
@@ -1520,6 +1522,7 @@
       accessMode: settings && ["writer", "reader", "unknown"].includes(settings.accessMode)
         ? settings.accessMode
         : "writer",
+      googleAccountEmail: String((settings && settings.googleAccountEmail) || "").trim(),
       lastSuccessfulSyncAt: String((settings && settings.lastSuccessfulSyncAt) || "").trim(),
     };
   }
@@ -1704,16 +1707,34 @@
       const tokenClient = globalThis.google.accounts.oauth2.initTokenClient({
         client_id: state.syncSettings.googleClientId,
         scope,
-        callback: (response) => {
+        login_hint: state.syncSettings.googleAccountEmail || undefined,
+        callback: async (response) => {
           if (response?.error) {
             reject(new Error(response.error_description || response.error));
             return;
           }
+          await rememberGoogleAccount(response.access_token);
           resolve(response.access_token);
         },
       });
       tokenClient.requestAccessToken({ prompt: "" });
     });
+  }
+
+  async function rememberGoogleAccount(accessToken) {
+    try {
+      const response = await fetch("https://www.googleapis.com/drive/v3/about?fields=user(emailAddress)", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (!response.ok) return;
+      const payload = await response.json();
+      const email = String(payload?.user?.emailAddress || "").trim();
+      if (!email || email === state.syncSettings.googleAccountEmail) return;
+      state.syncSettings.googleAccountEmail = email;
+      await persistSyncSettings();
+    } catch {
+      // Account hint is optional and must not interrupt cloud actions.
+    }
   }
 
   function consumeCloudConnectionSettings() {
