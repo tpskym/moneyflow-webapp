@@ -1332,10 +1332,10 @@
     const startCategorySearchOption = state.categorySearchEditing
       ? ""
       : `
-        <button type="button" class="category-picker-option category-picker-option--add" data-action="start-category-search">
+        <label for="operation-category-input" class="category-picker-option category-picker-option--add" data-action="start-category-search">
           <span class="category-picker-add-mark">+</span>
           <span>Найти или добавить категорию</span>
-        </button>
+        </label>
       `;
 
     if (!result.totalItems) {
@@ -1634,7 +1634,6 @@
     state.categorySearchText = "";
     state.categoryCurrentPage = 1;
     renderCategoryOptions();
-    elements.categoryPickerInput.focus();
   }
 
   function onPopularCategoryClick(event) {
