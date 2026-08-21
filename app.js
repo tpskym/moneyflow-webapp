@@ -553,6 +553,8 @@
 
     state.operations = [];
     state.categories = [];
+    state.googleAccessTokens.clear();
+    localStorage.removeItem("moneyflow-google-access-tokens");
     state.cloudPassphrase = "";
     localStorage.removeItem(STORAGE_KEYS.cloudPassphrase);
     if (elements.cloudPassphraseInput) elements.cloudPassphraseInput.value = "";
@@ -2294,18 +2296,52 @@
   }
 
   async function getGoogleAccessToken(scope) {
-    const cachedToken = state.googleAccessTokens.get(scope);
-    if (cachedToken && cachedToken.expiresAt > Date.now() + 60_000) {
-      return cachedToken.accessToken;
+    const cachedToken = getCachedGoogleAccessToken(scope);
+    if (cachedToken) return cachedToken;
+    return requestGoogleAccessToken(scope, "");
+  }
+
+  function getGoogleAccessTokenCacheKey(scope) {
+    return `${state.syncSettings.googleClientId}::${scope}`;
+  }
+
+  function getCachedGoogleAccessToken(scope) {
+    const cacheKey = getGoogleAccessTokenCacheKey(scope);
+    const memoryToken = state.googleAccessTokens.get(cacheKey);
+    if (memoryToken?.expiresAt > Date.now() + 60_000) {
+      return memoryToken.accessToken;
     }
 
     try {
-      return await requestGoogleAccessToken(scope, "none");
-    } catch (silentError) {
-      if (silentError?.code === "popup_failed_to_open" || silentError?.code === "popup_closed") {
-        throw silentError;
+      const storedTokens = JSON.parse(localStorage.getItem("moneyflow-google-access-tokens") || "{}");
+      const storedToken = storedTokens[cacheKey];
+      if (storedToken?.accessToken && storedToken.expiresAt > Date.now() + 60_000) {
+        state.googleAccessTokens.set(cacheKey, storedToken);
+        return storedToken.accessToken;
       }
-      return requestGoogleAccessToken(scope, "");
+      if (storedToken) {
+        delete storedTokens[cacheKey];
+        localStorage.setItem("moneyflow-google-access-tokens", JSON.stringify(storedTokens));
+      }
+    } catch {
+      // The token cache is optional: authorization still works without it.
+    }
+    return "";
+  }
+
+  function cacheGoogleAccessToken(scope, accessToken, expiresInSeconds) {
+    const token = {
+      accessToken,
+      expiresAt: Date.now() + Math.max(60_000, (Number(expiresInSeconds) || 3600) * 1000 - 60_000),
+    };
+    const cacheKey = getGoogleAccessTokenCacheKey(scope);
+    state.googleAccessTokens.set(cacheKey, token);
+    try {
+      const storedTokens = JSON.parse(localStorage.getItem("moneyflow-google-access-tokens") || "{}");
+      storedTokens[cacheKey] = token;
+      localStorage.setItem("moneyflow-google-access-tokens", JSON.stringify(storedTokens));
+    } catch {
+      // The in-memory token remains available even if persistent storage is unavailable.
     }
   }
 
@@ -2329,11 +2365,7 @@
             rejectWithGoogleError(response, "Google не выдал токен доступа.");
             return;
           }
-          const expiresInSeconds = Math.max(60, Number(response.expires_in) || 3600);
-          state.googleAccessTokens.set(scope, {
-            accessToken: response.access_token,
-            expiresAt: Date.now() + (expiresInSeconds * 1000),
-          });
+          cacheGoogleAccessToken(scope, response.access_token, response.expires_in);
           await rememberGoogleAccount(response.access_token);
           resolve(response.access_token);
         },
