@@ -126,7 +126,6 @@
       googleAccountEmail: "",
       lastSuccessfulSyncAt: "",
     },
-    googleAccessTokens: new Map(),
     amountsHidden: false,
     cloudPassphrase: "",
     cloudEncryptionKey: "",
@@ -553,8 +552,6 @@
 
     state.operations = [];
     state.categories = [];
-    state.googleAccessTokens.clear();
-    localStorage.removeItem("moneyflow-google-access-tokens");
     state.cloudPassphrase = "";
     localStorage.removeItem(STORAGE_KEYS.cloudPassphrase);
     if (elements.cloudPassphraseInput) elements.cloudPassphraseInput.value = "";
@@ -2296,82 +2293,24 @@
   }
 
   async function getGoogleAccessToken(scope) {
-    const cachedToken = getCachedGoogleAccessToken(scope);
-    if (cachedToken) return cachedToken;
-    return requestGoogleAccessToken(scope, "");
-  }
-
-  function getGoogleAccessTokenCacheKey(scope) {
-    return `${state.syncSettings.googleClientId}::${scope}`;
-  }
-
-  function getCachedGoogleAccessToken(scope) {
-    const cacheKey = getGoogleAccessTokenCacheKey(scope);
-    const memoryToken = state.googleAccessTokens.get(cacheKey);
-    if (memoryToken?.expiresAt > Date.now() + 60_000) {
-      return memoryToken.accessToken;
-    }
-
-    try {
-      const storedTokens = JSON.parse(localStorage.getItem("moneyflow-google-access-tokens") || "{}");
-      const storedToken = storedTokens[cacheKey];
-      if (storedToken?.accessToken && storedToken.expiresAt > Date.now() + 60_000) {
-        state.googleAccessTokens.set(cacheKey, storedToken);
-        return storedToken.accessToken;
-      }
-      if (storedToken) {
-        delete storedTokens[cacheKey];
-        localStorage.setItem("moneyflow-google-access-tokens", JSON.stringify(storedTokens));
-      }
-    } catch {
-      // The token cache is optional: authorization still works without it.
-    }
-    return "";
-  }
-
-  function cacheGoogleAccessToken(scope, accessToken, expiresInSeconds) {
-    const token = {
-      accessToken,
-      expiresAt: Date.now() + Math.max(60_000, (Number(expiresInSeconds) || 3600) * 1000 - 60_000),
-    };
-    const cacheKey = getGoogleAccessTokenCacheKey(scope);
-    state.googleAccessTokens.set(cacheKey, token);
-    try {
-      const storedTokens = JSON.parse(localStorage.getItem("moneyflow-google-access-tokens") || "{}");
-      storedTokens[cacheKey] = token;
-      localStorage.setItem("moneyflow-google-access-tokens", JSON.stringify(storedTokens));
-    } catch {
-      // The in-memory token remains available even if persistent storage is unavailable.
-    }
-  }
-
-  function requestGoogleAccessToken(scope, prompt) {
     if (!globalThis.google?.accounts?.oauth2) {
-      return Promise.reject(new Error("Сервис авторизации Google ещё загружается. Повторите попытку через несколько секунд."));
+      throw new Error("Сервис авторизации Google ещё загружается. Повторите попытку через несколько секунд.");
     }
-
     return new Promise((resolve, reject) => {
-      const rejectWithGoogleError = (error, fallbackMessage) => {
-        const authError = new Error(error?.error_description || error?.message || error?.type || error?.error || fallbackMessage);
-        authError.code = error?.type || error?.error || "google_authorization_error";
-        reject(authError);
-      };
       const tokenClient = globalThis.google.accounts.oauth2.initTokenClient({
         client_id: state.syncSettings.googleClientId,
         scope,
         login_hint: state.syncSettings.googleAccountEmail || undefined,
         callback: async (response) => {
-          if (response?.error || !response?.access_token) {
-            rejectWithGoogleError(response, "Google не выдал токен доступа.");
+          if (response?.error) {
+            reject(new Error(response.error_description || response.error));
             return;
           }
-          cacheGoogleAccessToken(scope, response.access_token, response.expires_in);
           await rememberGoogleAccount(response.access_token);
           resolve(response.access_token);
         },
-        error_callback: (error) => rejectWithGoogleError(error, "Не удалось открыть авторизацию Google."),
       });
-      tokenClient.requestAccessToken({ prompt });
+      tokenClient.requestAccessToken({ prompt: "" });
     });
   }
 
