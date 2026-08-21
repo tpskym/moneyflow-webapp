@@ -126,6 +126,7 @@
       googleAccountEmail: "",
       lastSuccessfulSyncAt: "",
     },
+    googleAccessTokens: new Map(),
     amountsHidden: false,
     cloudPassphrase: "",
     cloudEncryptionKey: "",
@@ -2293,24 +2294,52 @@
   }
 
   async function getGoogleAccessToken(scope) {
-    if (!globalThis.google?.accounts?.oauth2) {
-      throw new Error("Сервис авторизации Google ещё загружается. Повторите попытку через несколько секунд.");
+    const cachedToken = state.googleAccessTokens.get(scope);
+    if (cachedToken && cachedToken.expiresAt > Date.now() + 60_000) {
+      return cachedToken.accessToken;
     }
+
+    try {
+      return await requestGoogleAccessToken(scope, "none");
+    } catch (silentError) {
+      if (silentError?.code === "popup_failed_to_open" || silentError?.code === "popup_closed") {
+        throw silentError;
+      }
+      return requestGoogleAccessToken(scope, "");
+    }
+  }
+
+  function requestGoogleAccessToken(scope, prompt) {
+    if (!globalThis.google?.accounts?.oauth2) {
+      return Promise.reject(new Error("Сервис авторизации Google ещё загружается. Повторите попытку через несколько секунд."));
+    }
+
     return new Promise((resolve, reject) => {
+      const rejectWithGoogleError = (error, fallbackMessage) => {
+        const authError = new Error(error?.error_description || error?.message || error?.type || error?.error || fallbackMessage);
+        authError.code = error?.type || error?.error || "google_authorization_error";
+        reject(authError);
+      };
       const tokenClient = globalThis.google.accounts.oauth2.initTokenClient({
         client_id: state.syncSettings.googleClientId,
         scope,
         login_hint: state.syncSettings.googleAccountEmail || undefined,
         callback: async (response) => {
-          if (response?.error) {
-            reject(new Error(response.error_description || response.error));
+          if (response?.error || !response?.access_token) {
+            rejectWithGoogleError(response, "Google не выдал токен доступа.");
             return;
           }
+          const expiresInSeconds = Math.max(60, Number(response.expires_in) || 3600);
+          state.googleAccessTokens.set(scope, {
+            accessToken: response.access_token,
+            expiresAt: Date.now() + (expiresInSeconds * 1000),
+          });
           await rememberGoogleAccount(response.access_token);
           resolve(response.access_token);
         },
+        error_callback: (error) => rejectWithGoogleError(error, "Не удалось открыть авторизацию Google."),
       });
-      tokenClient.requestAccessToken({ prompt: "" });
+      tokenClient.requestAccessToken({ prompt });
     });
   }
 
