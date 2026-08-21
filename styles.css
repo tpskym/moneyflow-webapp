@@ -588,13 +588,13 @@ textarea:focus-visible {
 
 .category-chart {
   display: grid;
-  grid-template-columns: 112px minmax(0, 1fr);
-  gap: 14px;
+  grid-template-columns: 152px minmax(0, 1fr);
+  gap: 18px;
   align-items: center;
 }
 
 .chart-donut {
-  width: 112px;
+  width: 152px;
   aspect-ratio: 1;
   border-radius: 50%;
   display: grid;
@@ -605,7 +605,7 @@ textarea:focus-visible {
 .chart-donut::after {
   content: "";
   position: absolute;
-  inset: 23px;
+  inset: 29px;
   border-radius: 50%;
   background: var(--panel-soft);
 }
@@ -613,9 +613,9 @@ textarea:focus-visible {
 .chart-donut span {
   position: relative;
   z-index: 1;
-  width: 66px;
+  width: 90px;
   color: var(--text);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 750;
   line-height: 1.15;
   text-align: center;
@@ -749,10 +749,21 @@ textarea:focus-visible {
 @media (max-width: 420px) {
   .category-chart {
     grid-template-columns: 1fr;
+    gap: 16px;
   }
 
   .chart-donut {
     margin: 0 auto;
+    width: min(190px, 58vw);
+  }
+
+  .chart-donut::after {
+    inset: 34px;
+  }
+
+  .chart-donut span {
+    width: 108px;
+    font-size: 13px;
   }
 }
 
