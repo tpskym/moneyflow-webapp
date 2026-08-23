@@ -809,6 +809,18 @@ textarea:focus-visible {
   gap: 6px;
 }
 
+.date-range .operation-date-display {
+  min-height: 44px;
+  padding: 0 10px;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.date-range .operation-date-picker {
+  flex-basis: 44px;
+  min-height: 44px;
+}
+
 @media (max-width: 420px) {
   .category-chart {
     grid-template-columns: 1fr;

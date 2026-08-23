@@ -67,6 +67,10 @@
     dayFilterContainer: document.getElementById("day-filters"),
     dateFromInput: document.getElementById("date-from"),
     dateToInput: document.getElementById("date-to"),
+    dateFromDisplay: document.getElementById("date-from-display"),
+    dateToDisplay: document.getElementById("date-to-display"),
+    dateFromPickerInput: document.getElementById("date-from-picker"),
+    dateToPickerInput: document.getElementById("date-to-picker"),
     categoryFilterContainer: document.getElementById("category-filters"),
     syncToggleButton: document.getElementById("sync-settings-toggle"),
     syncSettingsCard: document.getElementById("sync-settings-section"),
@@ -254,10 +258,8 @@
       container?.addEventListener("pointerup", onPeriodPointerUp);
       container?.addEventListener("pointercancel", onPeriodPointerUp);
     });
-    elements.dateFromInput?.addEventListener("input", onDateRangeInput);
-    elements.dateToInput?.addEventListener("input", onDateRangeInput);
-    elements.dateFromInput?.addEventListener("blur", onDateRangeBlur);
-    elements.dateToInput?.addEventListener("blur", onDateRangeBlur);
+    elements.dateFromPickerInput?.addEventListener("change", onDateRangePickerChange);
+    elements.dateToPickerInput?.addEventListener("change", onDateRangePickerChange);
     elements.chartsToggleButton?.addEventListener("click", onChartsToggle);
     elements.categoryFilterContainer?.addEventListener("click", onCategoryFilterClick);
     elements.readerLinkApplyButton?.addEventListener("click", onApplyReaderConnectionLink);
@@ -445,6 +447,22 @@
       target.value = Number.isNaN(parsedDate.getTime()) ? "" : normalizeDateForInput(parsedDate);
     }
     onDateRangeInput();
+  }
+
+  function onDateRangePickerChange(event) {
+    const target = event?.target;
+    if (!(target instanceof HTMLInputElement)) return;
+    const isFrom = target === elements.dateFromPickerInput;
+    const selectedDate = target.value ? parseDateFromValue(target.value) : new Date(NaN);
+    const value = Number.isNaN(selectedDate.getTime()) ? "" : normalizeDateForInput(selectedDate);
+    const dateInput = isFrom ? elements.dateFromInput : elements.dateToInput;
+    const dateDisplay = isFrom ? elements.dateFromDisplay : elements.dateToDisplay;
+    if (dateInput) dateInput.value = value;
+    if (dateDisplay) dateDisplay.textContent = value || "Не выбрана";
+    if (isFrom) state.dateFrom = value;
+    else state.dateTo = value;
+    state.currentPage = 1;
+    render();
   }
 
   function onChartsToggle() {
