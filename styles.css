@@ -104,6 +104,31 @@ body {
   line-height: 1.15;
 }
 
+.btn.is-loading {
+  gap: 10px;
+  color: #ffffff;
+  background: linear-gradient(135deg, #0891b2, #2563eb);
+  border-color: rgba(165, 243, 252, 0.82);
+  box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.22), 0 10px 24px rgba(14, 165, 233, 0.3);
+  cursor: wait;
+  opacity: 1;
+}
+
+.btn.is-loading::before {
+  content: "";
+  width: 15px;
+  height: 15px;
+  flex: 0 0 15px;
+  border: 2px solid rgba(255, 255, 255, 0.42);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: cloud-action-spin 0.75s linear infinite;
+}
+
+@keyframes cloud-action-spin {
+  to { transform: rotate(360deg); }
+}
+
 .quick-add-toggle {
   grid-column: 1 / -1;
   gap: 8px;
