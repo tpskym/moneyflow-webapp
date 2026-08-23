@@ -166,6 +166,7 @@
   let periodDrag = null;
   let ignorePeriodClick = false;
   let operationsLoadObserver = null;
+  let cloudActionInProgress = false;
 
   async function main() {
     enableLiveReload();
@@ -227,7 +228,7 @@
     if (isLocalHost) return;
     if (!("serviceWorker" in navigator)) return;
     window.addEventListener("load", () => {
-      navigator.serviceWorker.register("sw.js?v=140").then((registration) => registration.update()).catch(() => {});
+      navigator.serviceWorker.register("sw.js?v=141").then((registration) => registration.update()).catch(() => {});
     });
   }
 
@@ -795,45 +796,75 @@
     return `"${String(value ?? "").replace(/"/g, '""')}"`;
   }
   async function onCloudUpload() {
+    if (cloudActionInProgress) return;
+    cloudActionInProgress = true;
+    setCloudActionPending("upload", true);
     setSyncStatus("Подготавливаю выгрузку в облако...");
     showAppNotice("Подготавливаю выгрузку в облако...");
-    const saved = await onSyncSave({ close: false, announce: false });
-    if (!saved) {
-      updateSyncSettingsVisibility(true);
-      return;
+    try {
+      const saved = await onSyncSave({ close: false, announce: false });
+      if (!saved) {
+        updateSyncSettingsVisibility(true);
+        return;
+      }
+      if (state.syncSettings.accessMode !== "writer" && state.syncSettings.googleFileId) {
+        updateSyncSettingsVisibility(true);
+        setSyncStatus("Это устройство настроено только для чтения. Выгрузка недоступна.");
+        return;
+      }
+      const missingSyncSettings = getMissingSyncSettings();
+      if (missingSyncSettings.length > 0) {
+        updateSyncSettingsVisibility(true);
+        setSyncStatus(`Выгрузка не выполнена: заполните ${missingSyncSettings.join(", ")}.`);
+        const firstMissingInput = elements.syncGoogleClientIdInput;
+        firstMissingInput?.focus();
+        return;
+      }
+      await uploadToGoogleDrive();
+    } finally {
+      cloudActionInProgress = false;
+      setCloudActionPending("upload", false);
     }
-    if (state.syncSettings.accessMode !== "writer" && state.syncSettings.googleFileId) {
-      updateSyncSettingsVisibility(true);
-      setSyncStatus("Это устройство настроено только для чтения. Выгрузка недоступна.");
-      return;
-    }
-    const missingSyncSettings = getMissingSyncSettings();
-    if (missingSyncSettings.length > 0) {
-      updateSyncSettingsVisibility(true);
-      setSyncStatus(`Выгрузка не выполнена: заполните ${missingSyncSettings.join(", ")}.`);
-      const firstMissingInput = elements.syncGoogleClientIdInput;
-      firstMissingInput?.focus();
-      return;
-    }
-    await uploadToGoogleDrive();
   }
 
   async function onCloudDownload({ skipReplaceConfirmation = state.syncSettings.accessMode === "reader" } = {}) {
+    if (cloudActionInProgress) return;
+    cloudActionInProgress = true;
+    setCloudActionPending("download", true);
     setSyncStatus("Подготавливаю загрузку из облака...");
     showAppNotice("Подготавливаю загрузку из облака...");
-    const saved = await onSyncSave({ close: false, announce: false });
-    if (!saved) {
-      updateSyncSettingsVisibility(true);
-      return;
+    try {
+      const saved = await onSyncSave({ close: false, announce: false });
+      if (!saved) {
+        updateSyncSettingsVisibility(true);
+        return;
+      }
+      const missingSyncSettings = getMissingSyncSettings();
+      if (missingSyncSettings.length > 0) {
+        updateSyncSettingsVisibility(true);
+        setSyncStatus(`Загрузка не выполнена: заполните ${missingSyncSettings.join(", ")}.`);
+        elements.syncGoogleClientIdInput?.focus();
+        return;
+      }
+      await downloadFromGoogleDrive({ skipReplaceConfirmation });
+    } finally {
+      cloudActionInProgress = false;
+      setCloudActionPending("download", false);
     }
-    const missingSyncSettings = getMissingSyncSettings();
-    if (missingSyncSettings.length > 0) {
-      updateSyncSettingsVisibility(true);
-      setSyncStatus(`Загрузка не выполнена: заполните ${missingSyncSettings.join(", ")}.`);
-      elements.syncGoogleClientIdInput?.focus();
-      return;
-    }
-    await downloadFromGoogleDrive({ skipReplaceConfirmation });
+  }
+
+  function setCloudActionPending(action, pending) {
+    const buttons = action === "upload"
+      ? [elements.cloudUploadTopButton, elements.cloudUploadButton]
+      : [elements.cloudDownloadTopButton, elements.cloudDownloadButton, elements.readerCloudDownloadButton];
+    const pendingLabel = action === "upload" ? "Выгружаю..." : "Загружаю...";
+
+    buttons.filter(Boolean).forEach((button) => {
+      if (!button.dataset.idleLabel) button.dataset.idleLabel = button.textContent.trim();
+      button.disabled = pending;
+      button.classList.toggle("is-loading", pending);
+      button.textContent = pending ? pendingLabel : button.dataset.idleLabel;
+    });
   }
 
   async function onReaderCloudDownload() {
