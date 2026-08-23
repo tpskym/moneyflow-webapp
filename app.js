@@ -45,6 +45,8 @@
     popularCategories: document.getElementById("popular-categories"),
     descriptionInput: document.getElementById("operation-description"),
     operationDateInput: document.getElementById("operation-date"),
+    operationDateDisplay: document.getElementById("operation-date-display"),
+    operationDatePickerInput: document.getElementById("operation-date-picker"),
     balanceCurrent: document.getElementById("balance-current"),
     lastSuccessfulSync: document.getElementById("last-successful-sync"),
     chartsToggleButton: document.getElementById("charts-toggle"),
@@ -281,8 +283,7 @@
     elements.instructionsCloseButton?.addEventListener("click", () => updateInstructionsVisibility(false));
     elements.amountsVisibilityToggleButton?.addEventListener("click", onAmountsVisibilityToggle);
     elements.quickAddToggleButton?.addEventListener("click", onQuickAddToggle);
-    elements.operationDateInput?.addEventListener("input", onOperationDateInput);
-    elements.operationDateInput?.addEventListener("blur", onOperationDateInputBlur);
+    elements.operationDatePickerInput?.addEventListener("change", onOperationDatePickerChange);
     elements.operationsList.addEventListener("pointerdown", onOperationsListPointerDown);
     elements.operationsList.addEventListener("pointerup", onOperationsListPointerUp);
     elements.operationsList.addEventListener("pointercancel", onOperationsListPointerCancel);
@@ -1156,6 +1157,9 @@
         element.readOnly = isViewMode;
       }
     });
+    if (elements.operationDatePickerInput) {
+      elements.operationDatePickerInput.disabled = isViewMode;
+    }
 
     if (elements.categoryPickerToggle) {
       elements.categoryPickerToggle.disabled = isViewMode;
@@ -1280,7 +1284,13 @@
 
   function setQuickAddDate(value) {
     if (!elements.operationDateInput) return;
-    elements.operationDateInput.value = value || getTodayInputDate();
+    const inputValue = value || getTodayInputDate();
+    elements.operationDateInput.value = inputValue;
+    if (elements.operationDateDisplay) elements.operationDateDisplay.textContent = inputValue;
+    const parsedDate = parseDateFromInput(inputValue);
+    if (elements.operationDatePickerInput) {
+      elements.operationDatePickerInput.value = Number.isNaN(parsedDate?.getTime()) ? "" : dateToDateOnlyString(parsedDate);
+    }
   }
 
   function normalizeDateForInput(dateValue) {
@@ -1322,6 +1332,14 @@
     }
 
     target.value = normalizeDateForInput(parsedDate);
+  }
+
+  function onOperationDatePickerChange(event) {
+    const target = event?.target;
+    if (!(target instanceof HTMLInputElement) || !target.value) return;
+    const selectedDate = parseDateFromValue(target.value);
+    if (Number.isNaN(selectedDate.getTime())) return;
+    setQuickAddDate(normalizeDateForInput(selectedDate));
   }
 
   function getTodayInputDate() {
