@@ -288,6 +288,9 @@
     elements.operationsList.addEventListener("pointercancel", onOperationsListPointerCancel);
     elements.operationsList.addEventListener("pointerleave", onOperationsListPointerCancel);
     elements.operationsList.addEventListener("lostpointercapture", onOperationsListPointerCancel);
+    elements.operationsList.addEventListener("contextmenu", (event) => {
+      if (event.target.closest("[data-operation-id]")) event.preventDefault();
+    });
     elements.operationsList.addEventListener("click", onOperationsListClick);
     document.addEventListener("click", onOutsideOperationMenuClick);
     elements.chipContainer.addEventListener("click", (event) => {
