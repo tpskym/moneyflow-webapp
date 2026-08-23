@@ -1014,7 +1014,7 @@
 
       if (action === "copy") {
         closeAllOperationMenus();
-        openQuickAddWithOperation(operation, { mode: "copy", date: getOperationDateValue(operation) });
+        openQuickAddWithOperation(operation, { mode: "copy", date: operationDateOnlyString(getTodayDate()) });
       } else if (action === "edit") {
         closeAllOperationMenus();
         openQuickAddWithOperation(operation, { mode: "edit", date: getOperationDateValue(operation), sourceOperationId: operation.id });
