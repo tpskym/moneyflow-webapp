@@ -227,7 +227,7 @@
     if (isLocalHost) return;
     if (!("serviceWorker" in navigator)) return;
     window.addEventListener("load", () => {
-      navigator.serviceWorker.register("sw.js?v=139").then((registration) => registration.update()).catch(() => {});
+      navigator.serviceWorker.register("sw.js?v=140").then((registration) => registration.update()).catch(() => {});
     });
   }
 
@@ -795,6 +795,8 @@
     return `"${String(value ?? "").replace(/"/g, '""')}"`;
   }
   async function onCloudUpload() {
+    setSyncStatus("Подготавливаю выгрузку в облако...");
+    showAppNotice("Подготавливаю выгрузку в облако...");
     const saved = await onSyncSave({ close: false, announce: false });
     if (!saved) {
       updateSyncSettingsVisibility(true);
@@ -817,6 +819,8 @@
   }
 
   async function onCloudDownload({ skipReplaceConfirmation = state.syncSettings.accessMode === "reader" } = {}) {
+    setSyncStatus("Подготавливаю загрузку из облака...");
+    showAppNotice("Подготавливаю загрузку из облака...");
     const saved = await onSyncSave({ close: false, announce: false });
     if (!saved) {
       updateSyncSettingsVisibility(true);
