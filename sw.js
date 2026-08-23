@@ -1,4 +1,4 @@
-const CACHE_NAME = "moneyflow-v128";
+const CACHE_NAME = "moneyflow-v129";
 const ASSETS = [
   "./",
   "./index.html",
@@ -78,16 +78,13 @@ function isAppShellRequest(request) {
 }
 
 function fetchAndCache(request) {
-  return caches.match(request, { ignoreSearch: true }).then((cached) => {
-    if (cached) return cached;
-    return fetch(request)
-      .then((response) => {
-        const cloned = response.clone();
-        if (response.ok && response.status === 200 && cloned.url.startsWith("http")) {
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, cloned));
-        }
-        return response;
-      })
-      .catch(() => caches.match("./index.html"));
-  });
+  return fetch(request)
+    .then((response) => {
+      const cloned = response.clone();
+      if (response.ok && response.status === 200 && cloned.url.startsWith("http")) {
+        caches.open(CACHE_NAME).then((cache) => cache.put(request, cloned));
+      }
+      return response;
+    })
+    .catch(() => caches.match(request, { ignoreSearch: true }).then((cached) => cached || caches.match("./index.html")));
 }
