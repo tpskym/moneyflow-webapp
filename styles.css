@@ -311,6 +311,7 @@ h1 {
   width: 100%;
   height: 100%;
   opacity: 0;
+  pointer-events: none;
   cursor: pointer;
   -webkit-appearance: none;
   appearance: none;
@@ -335,6 +336,7 @@ h1 {
   align-items: center;
   justify-content: flex-start;
   padding: 0 14px;
+  cursor: pointer;
 }
 
 .operation-date-picker .operation-date-display {
@@ -350,28 +352,6 @@ h1 {
   flex-basis: auto;
   min-height: 44px;
   padding: 0 10px;
-}
-
-.date-range-clear {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 36px;
-  margin: -2px 0 14px;
-  padding: 0 14px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: rgba(30, 41, 59, 0.68);
-  color: var(--muted);
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.date-range-clear:active,
-.date-range-clear:hover {
-  color: var(--text);
-  border-color: rgba(103, 232, 249, 0.5);
-  background: rgba(8, 145, 178, 0.16);
 }
 
 .field-hint {
