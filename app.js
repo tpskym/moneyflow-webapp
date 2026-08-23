@@ -461,7 +461,7 @@
     const dateInput = isFrom ? elements.dateFromInput : elements.dateToInput;
     const dateDisplay = isFrom ? elements.dateFromDisplay : elements.dateToDisplay;
     if (dateInput) dateInput.value = value;
-    if (dateDisplay) dateDisplay.textContent = value || "Не выбрана";
+    if (dateDisplay) dateDisplay.textContent = value || "Выбрать дату";
     if (isFrom) state.dateFrom = value;
     else state.dateTo = value;
     state.currentPage = 1;
