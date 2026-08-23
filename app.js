@@ -260,6 +260,8 @@
     });
     elements.dateFromPickerInput?.addEventListener("change", onDateRangePickerChange);
     elements.dateToPickerInput?.addEventListener("change", onDateRangePickerChange);
+    elements.dateFromPickerInput?.addEventListener("input", onDateRangePickerChange);
+    elements.dateToPickerInput?.addEventListener("input", onDateRangePickerChange);
     elements.chartsToggleButton?.addEventListener("click", onChartsToggle);
     elements.categoryFilterContainer?.addEventListener("click", onCategoryFilterClick);
     elements.readerLinkApplyButton?.addEventListener("click", onApplyReaderConnectionLink);
@@ -286,6 +288,7 @@
     elements.amountsVisibilityToggleButton?.addEventListener("click", onAmountsVisibilityToggle);
     elements.quickAddToggleButton?.addEventListener("click", onQuickAddToggle);
     elements.operationDatePickerInput?.addEventListener("change", onOperationDatePickerChange);
+    elements.operationDatePickerInput?.addEventListener("input", onOperationDatePickerChange);
     elements.operationsList.addEventListener("pointerdown", onOperationsListPointerDown);
     elements.operationsList.addEventListener("pointerup", onOperationsListPointerUp);
     elements.operationsList.addEventListener("pointercancel", onOperationsListPointerCancel);
