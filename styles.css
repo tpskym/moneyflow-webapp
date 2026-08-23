@@ -352,6 +352,21 @@ h1 {
   padding: 0 10px;
 }
 
+.date-range-clear {
+  display: block;
+  margin: -4px 0 12px auto;
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.date-range-clear:active,
+.date-range-clear:hover {
+  color: var(--text);
+}
+
 .field-hint {
   color: var(--muted);
   font-size: 12px;

@@ -71,6 +71,7 @@
     dateToDisplay: document.getElementById("date-to-display"),
     dateFromPickerInput: document.getElementById("date-from-picker"),
     dateToPickerInput: document.getElementById("date-to-picker"),
+    dateRangeClearButton: document.getElementById("date-range-clear"),
     categoryFilterContainer: document.getElementById("category-filters"),
     syncToggleButton: document.getElementById("sync-settings-toggle"),
     syncSettingsCard: document.getElementById("sync-settings-section"),
@@ -262,6 +263,7 @@
     elements.dateToPickerInput?.addEventListener("change", onDateRangePickerChange);
     elements.dateFromPickerInput?.addEventListener("input", onDateRangePickerChange);
     elements.dateToPickerInput?.addEventListener("input", onDateRangePickerChange);
+    elements.dateRangeClearButton?.addEventListener("click", clearDateRange);
     elements.chartsToggleButton?.addEventListener("click", onChartsToggle);
     elements.categoryFilterContainer?.addEventListener("click", onCategoryFilterClick);
     elements.readerLinkApplyButton?.addEventListener("click", onApplyReaderConnectionLink);
@@ -468,6 +470,19 @@
     render();
   }
 
+  function clearDateRange() {
+    state.dateFrom = "";
+    state.dateTo = "";
+    state.currentPage = 1;
+    if (elements.dateFromInput) elements.dateFromInput.value = "";
+    if (elements.dateToInput) elements.dateToInput.value = "";
+    if (elements.dateFromPickerInput) elements.dateFromPickerInput.value = "";
+    if (elements.dateToPickerInput) elements.dateToPickerInput.value = "";
+    if (elements.dateFromDisplay) elements.dateFromDisplay.textContent = "Выбрать дату";
+    if (elements.dateToDisplay) elements.dateToDisplay.textContent = "Выбрать дату";
+    render();
+  }
+
   function onChartsToggle() {
     chartsOpen = !chartsOpen;
     updateChartsVisibility();
@@ -545,7 +560,7 @@
     }
   }
 
-  async function onSyncSave({ close = false } = {}) {
+  async function onSyncSave({ close = false, announce = true } = {}) {
     const googleClientId = (elements.syncGoogleClientIdInput?.value || state.syncSettings.googleClientId || "").trim();
     const googleFileId = (elements.syncGoogleFileIdInput?.value || state.syncSettings.googleFileId || "").trim();
     const cloudPassphrase = elements.cloudPassphraseInput?.value ?? state.cloudPassphrase;
@@ -563,8 +578,10 @@
     });
     await persistSyncSettings();
     updateCloudAccessUI();
-    setSyncStatus(passphraseChanged ? "Пароль-фраза сохранена. Выгрузите данные и отправьте читателям новую ссылку." : "Настройки сохранены.");
-    showAppNotice(passphraseChanged ? "Пароль-фраза сохранена." : "Настройки синхронизации сохранены.");
+    if (announce) {
+      setSyncStatus(passphraseChanged ? "Пароль-фраза сохранена. Выгрузите данные и отправьте читателям новую ссылку." : "Настройки сохранены.");
+      showAppNotice(passphraseChanged ? "Пароль-фраза сохранена." : "Настройки синхронизации сохранены.");
+    }
     if (close) {
       updateSyncSettingsVisibility(false);
     }
@@ -789,7 +806,7 @@
     return `"${String(value ?? "").replace(/"/g, '""')}"`;
   }
   async function onCloudUpload() {
-    const saved = await onSyncSave({ close: false });
+    const saved = await onSyncSave({ close: false, announce: false });
     if (!saved) {
       updateSyncSettingsVisibility(true);
       return;
@@ -807,11 +824,11 @@
       firstMissingInput?.focus();
       return;
     }
-    uploadToGoogleDrive();
+    await uploadToGoogleDrive();
   }
 
   async function onCloudDownload({ skipReplaceConfirmation = state.syncSettings.accessMode === "reader" } = {}) {
-    const saved = await onSyncSave({ close: false });
+    const saved = await onSyncSave({ close: false, announce: false });
     if (!saved) {
       updateSyncSettingsVisibility(true);
       return;
@@ -823,7 +840,7 @@
       elements.syncGoogleClientIdInput?.focus();
       return;
     }
-    downloadFromGoogleDrive({ skipReplaceConfirmation });
+    await downloadFromGoogleDrive({ skipReplaceConfirmation });
   }
 
   async function onReaderCloudDownload() {
