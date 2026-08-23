@@ -353,18 +353,25 @@ h1 {
 }
 
 .date-range-clear {
-  display: block;
-  margin: -4px 0 12px auto;
-  padding: 4px 0;
-  border: 0;
-  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  margin: -2px 0 14px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(30, 41, 59, 0.68);
   color: var(--muted);
-  font-size: 13px;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .date-range-clear:active,
 .date-range-clear:hover {
   color: var(--text);
+  border-color: rgba(103, 232, 249, 0.5);
+  background: rgba(8, 145, 178, 0.16);
 }
 
 .field-hint {
