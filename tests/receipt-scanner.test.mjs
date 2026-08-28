@@ -97,3 +97,22 @@ test("повторяет запуск камеры без выбора задн�
     { audio: false, video: true },
   ]);
 });
+
+test("повторяет запуск камеры при ошибке Android без имени ошибки", async () => {
+  const elements = createElements();
+  const constraints = [];
+  const scanner = createReceiptScanner({
+    elements,
+    getUserMedia: async (request) => {
+      constraints.push(request);
+      if (constraints.length === 1) throw new Error("Could not start video service");
+      return { getTracks: () => [] };
+    },
+    createDetector: () => ({ detect: async () => [] }),
+    scheduleFrame: () => 1,
+  });
+
+  await scanner.toggle();
+
+  assert.equal(constraints.length, 2);
+});

@@ -22,6 +22,7 @@ export function applyTypeFilter(state, value, chips = []) {
   for (const chip of chips) {
     const active = chip.getAttribute("data-type") === value;
     chip.classList.toggle("active", active);
+    chip.classList.toggle("is-active", active);
     chip.setAttribute("aria-pressed", String(active));
   }
 }
@@ -176,7 +177,7 @@ export function createFilterController(context) {
     applyTypeFilter(
       state,
       value,
-      elements.chipContainer?.querySelectorAll("[data-type]") || [],
+      elements.typeFilterContainer?.querySelectorAll("[data-type]") || [],
     );
     resetPage();
     redraw();
@@ -225,7 +226,7 @@ export function createFilterController(context) {
       "click",
       onCategoryClick,
     );
-    elements.chipContainer?.addEventListener("click", onTypeClick);
+    elements.typeFilterContainer?.addEventListener("click", onTypeClick);
     document
       .getElementById("date-from-picker-button")
       ?.addEventListener("click", () =>

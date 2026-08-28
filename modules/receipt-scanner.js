@@ -97,16 +97,21 @@ async function defaultRequestCamera(getUserMedia) {
       video: { facingMode: { ideal: "environment" } },
     });
   } catch (error) {
-    if (!["AbortError", "NotFoundError", "NotReadableError", "OverconstrainedError"].includes(error?.name)) throw error;
+    if (!shouldRetryCamera(error)) throw error;
     return getUserMedia({ audio: false, video: true });
   }
+}
+
+function shouldRetryCamera(error) {
+  if (["AbortError", "NotFoundError", "NotReadableError", "OverconstrainedError"].includes(error?.name)) return true;
+  return /could not start (video|camera) (service|source)/i.test(String(error?.message || ""));
 }
 
 function getScannerErrorMessage(error) {
   if (error?.name === "NotAllowedError" || error?.name === "SecurityError")
     return "разрешите доступ к камере в настройках браузера";
-  if (error?.name === "NotReadableError")
-    return "камера занята другим приложением, закройте его и повторите попытку";
+  if (error?.name === "NotReadableError" || /could not start (video|camera) (service|source)/i.test(String(error?.message || "")))
+    return "камера занята или отключена системой: закройте приложения с камерой и включите доступ к камере в шторке Android";
   if (error?.name === "NotFoundError") return "камера не найдена";
   return error?.message || "нет доступа к камере";
 }

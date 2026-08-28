@@ -55,5 +55,6 @@ test("выделяет выбранный тип операции в поиск�
 
   assert.equal(value.activeTypeFilter, "expense");
   assert.deepEqual(chips.map((chip) => chip.classes.has("active")), [false, false, true]);
+  assert.deepEqual(chips.map((chip) => chip.classes.has("is-active")), [false, false, true]);
   assert.deepEqual(chips.map((chip) => chip.attributes.get("aria-pressed")), ["false", "false", "true"]);
 });

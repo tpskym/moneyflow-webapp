@@ -102,7 +102,7 @@ export function createElements(doc = document) {
     searchFilters: byId("search-filters"),
     searchInput: byId("search-input"),
     operationsList: byId("operations-list"),
-    chipContainer: doc.querySelector(".chips"),
+    typeFilterContainer: byId("type-filters"),
     balanceTitle: byId("balance-title"),
     operationsLoadSentinel: byId("operations-load-sentinel"),
     yearFilterContainer: byId("year-filters"),

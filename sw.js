@@ -1,12 +1,12 @@
-const CACHE_NAME = "moneyflow-v159";
+const CACHE_NAME = "moneyflow-v160";
 const SHARED_RECEIPTS_DB = "moneyflow-shared-receipts-v1";
 const SHARED_RECEIPTS_STORE = "receipts";
 const ASSETS = [
   "./",
   "./index.html",
-  "./styles.css?v=159",
-  "./vendor/jsqr/jsQR.js?v=159",
-  "./app.js?v=159",
+  "./styles.css?v=160",
+  "./vendor/jsqr/jsQR.js?v=160",
+  "./app.js?v=160",
   "./modules/receipt-parser.js",
   "./modules/receipt-scanner.js",
   "./modules/dates.js",
