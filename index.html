@@ -10,17 +10,17 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="M-Flow" />
     <title>M-Flow</title>
-    <link rel="manifest" href="manifest.webmanifest?v=144" />
+    <link rel="manifest" href="manifest.webmanifest?v=145" />
     <link rel="icon" href="icons/moneyflow.svg?v=120" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="icons/moneyflow.svg?v=120" />
-    <link rel="stylesheet" href="styles.css?v=144" />
+    <link rel="stylesheet" href="styles.css?v=145" />
   </head>
   <body>
     <div class="page">
       <header class="header">
         <div class="header-heading">
           <p class="eyebrow">Личный счёт</p>
-          <div class="brand-title-row"><h1>M-Flow</h1><span class="app-version">v144</span></div>
+          <div class="brand-title-row"><h1>M-Flow</h1><span class="app-version">v145</span></div>
           <p class="subtitle"><span class="subtitle-label">Учет доходов и расходов</span></p>
         </div>
         <div class="header-tools">
@@ -249,6 +249,18 @@
           </form>
         </section>
 
+        <section class="card shared-receipts-card" id="shared-receipts-card" hidden>
+          <div class="shared-receipts-heading">
+            <div>
+              <p class="eyebrow">ИЗ ДРУГОГО ПРИЛОЖЕНИЯ</p>
+              <h2>Чеки</h2>
+            </div>
+            <span id="shared-receipts-count" class="shared-receipts-count">0</span>
+          </div>
+          <p class="shared-receipts-hint">QR распознан из изображения. Откройте черновик, выберите категорию и добавьте операцию.</p>
+          <div id="shared-receipts-list" class="shared-receipts-list" aria-live="polite"></div>
+        </section>
+
         <div class="overview-divider">
           <span>Состояние счёта <span id="last-successful-sync" class="last-successful-sync">· ещё не было</span></span>
         </div>
@@ -342,6 +354,6 @@
     <div id="app-notice" class="app-notice" role="status" aria-live="polite" hidden></div>
 
     <script src="https://accounts.google.com/gsi/client" async></script>
-    <script src="app.js?v=144" defer></script>
+    <script src="app.js?v=145" defer></script>
   </body>
 </html>

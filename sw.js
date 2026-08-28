@@ -1,10 +1,12 @@
-const CACHE_NAME = "moneyflow-v144";
+const CACHE_NAME = "moneyflow-v145";
+const SHARED_RECEIPTS_DB = "moneyflow-shared-receipts-v1";
+const SHARED_RECEIPTS_STORE = "receipts";
 const ASSETS = [
   "./",
   "./index.html",
-  "./styles.css?v=144",
-  "./app.js?v=144",
-  "./manifest.webmanifest?v=144",
+  "./styles.css?v=145",
+  "./app.js?v=145",
+  "./manifest.webmanifest?v=145",
   "./icons/moneyflow.svg",
 ];
 
@@ -37,6 +39,10 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("fetch", (event) => {
+  if (isReceiptShareRequest(event.request)) {
+    event.respondWith(handleReceiptShare(event.request));
+    return;
+  }
   if (event.request.method !== "GET") return;
 
   const requestUrl = new URL(event.request.url);
@@ -67,6 +73,102 @@ self.addEventListener("fetch", (event) => {
     })
   );
 });
+
+self.addEventListener("message", (event) => {
+  const data = event.data || {};
+  if (data.type === "moneyflow:get-shared-receipts") {
+    const port = event.ports?.[0];
+    event.waitUntil(
+      getSharedReceipts()
+        .then((receipts) => port?.postMessage({ receipts }))
+        .catch((error) => port?.postMessage({ error: error?.message || "не удалось получить чеки" })),
+    );
+  }
+  if (data.type === "moneyflow:clear-shared-receipts") {
+    event.waitUntil(removeSharedReceipts(data.ids));
+  }
+});
+
+function isReceiptShareRequest(request) {
+  if (request.method !== "POST") return false;
+  const scope = new URL(self.registration.scope);
+  const url = new URL(request.url);
+  return url.origin === scope.origin && url.pathname === new URL("receive-check/", scope).pathname;
+}
+
+async function handleReceiptShare(request) {
+  const formData = await request.formData();
+  const receipts = formData.getAll("receipts").filter((item) => item && typeof item.arrayBuffer === "function");
+  if (receipts.length) await saveSharedReceipts(receipts);
+  return Response.redirect(new URL("./?shared-checks=1", self.registration.scope).href, 303);
+}
+
+async function saveSharedReceipts(files) {
+  const db = await openSharedReceiptsDb();
+  try {
+    const transaction = db.transaction(SHARED_RECEIPTS_STORE, "readwrite");
+    const store = transaction.objectStore(SHARED_RECEIPTS_STORE);
+    for (const file of files) {
+      store.add({ name: file.name || "Чек", type: file.type || "image/*", file, receivedAt: Date.now() });
+    }
+    await completeTransaction(transaction);
+  } finally {
+    db.close();
+  }
+}
+
+async function getSharedReceipts() {
+  const db = await openSharedReceiptsDb();
+  try {
+    const transaction = db.transaction(SHARED_RECEIPTS_STORE, "readonly");
+    const request = transaction.objectStore(SHARED_RECEIPTS_STORE).getAll();
+    return await requestResult(request);
+  } finally {
+    db.close();
+  }
+}
+
+async function removeSharedReceipts(ids) {
+  const values = Array.isArray(ids) ? ids : [];
+  if (!values.length) return;
+  const db = await openSharedReceiptsDb();
+  try {
+    const transaction = db.transaction(SHARED_RECEIPTS_STORE, "readwrite");
+    const store = transaction.objectStore(SHARED_RECEIPTS_STORE);
+    values.forEach((id) => store.delete(id));
+    await completeTransaction(transaction);
+  } finally {
+    db.close();
+  }
+}
+
+function openSharedReceiptsDb() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(SHARED_RECEIPTS_DB, 1);
+    request.onupgradeneeded = () => {
+      if (!request.result.objectStoreNames.contains(SHARED_RECEIPTS_STORE)) {
+        request.result.createObjectStore(SHARED_RECEIPTS_STORE, { keyPath: "id", autoIncrement: true });
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error || new Error("не удалось открыть хранилище чеков"));
+  });
+}
+
+function requestResult(request) {
+  return new Promise((resolve, reject) => {
+    request.onsuccess = () => resolve(request.result || []);
+    request.onerror = () => reject(request.error || new Error("не удалось прочитать чеки"));
+  });
+}
+
+function completeTransaction(transaction) {
+  return new Promise((resolve, reject) => {
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error || new Error("не удалось сохранить чеки"));
+    transaction.onabort = () => reject(transaction.error || new Error("операция с чеками отменена"));
+  });
+}
 
 function isAppShellRequest(request) {
   const url = new URL(request.url);

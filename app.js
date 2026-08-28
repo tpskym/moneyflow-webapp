@@ -122,6 +122,9 @@
     quickAddTitle: document.getElementById("quick-add-title"),
     operationSubmitButton: document.getElementById("operation-submit"),
     quickAddDismissButton: document.getElementById("quick-add-dismiss"),
+    sharedReceiptsCard: document.getElementById("shared-receipts-card"),
+    sharedReceiptsCount: document.getElementById("shared-receipts-count"),
+    sharedReceiptsList: document.getElementById("shared-receipts-list"),
   };
 
   const state = {
@@ -157,6 +160,7 @@
     quickAddMode: "add",
     quickAddSourceOperationId: "",
     readerPermissions: [],
+    sharedReceiptDrafts: [],
   };
 
   let searchDebounce;
@@ -214,6 +218,7 @@
     renderYearFilters();
     renderCategoryFilters();
     bindEvents();
+    await receiveSharedReceiptsFromShareTarget();
     render();
     registerServiceWorker();
   }
@@ -238,8 +243,190 @@
     if (isLocalHost) return;
     if (!("serviceWorker" in navigator)) return;
     window.addEventListener("load", () => {
-      navigator.serviceWorker.register("sw.js?v=144").then((registration) => registration.update()).catch(() => {});
+      navigator.serviceWorker.register("sw.js?v=145").then((registration) => registration.update()).catch(() => {});
     });
+  }
+
+  async function receiveSharedReceiptsFromShareTarget() {
+    const pageUrl = new URL(window.location.href);
+    if (pageUrl.searchParams.get("shared-checks") !== "1") return;
+
+    pageUrl.searchParams.delete("shared-checks");
+    window.history.replaceState({}, "", `${pageUrl.pathname}${pageUrl.search}${pageUrl.hash}`);
+
+    if (!("serviceWorker" in navigator)) {
+      showAppNotice("Приём чеков недоступен: браузер не поддерживает PWA.", "error");
+      return;
+    }
+
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      const worker = navigator.serviceWorker.controller || registration.active;
+      if (!worker) throw new Error("не удалось получить файлы из системного меню");
+
+      const sharedReceipts = await requestSharedReceipts(worker);
+      if (!sharedReceipts.length) throw new Error("картинки чеков не найдены");
+
+      state.sharedReceiptDrafts = await Promise.all(
+        sharedReceipts.map((receipt, index) => createSharedReceiptDraft(receipt, index)),
+      );
+      worker.postMessage({ type: "moneyflow:clear-shared-receipts", ids: sharedReceipts.map((receipt) => receipt.id) });
+      renderSharedReceiptQueue();
+
+      const recognizedCount = state.sharedReceiptDrafts.filter((receipt) => receipt.status === "ready").length;
+      const message = recognizedCount
+        ? `Получено чеков: ${sharedReceipts.length}. QR распознано: ${recognizedCount}.`
+        : "Картинки получены, но QR-коды распознать не удалось.";
+      showAppNotice(message, recognizedCount ? "success" : "error");
+    } catch (error) {
+      showAppNotice(`Не удалось обработать переданные чеки: ${error?.message || "неизвестная ошибка"}`, "error");
+    }
+  }
+
+  function requestSharedReceipts(worker) {
+    return new Promise((resolve, reject) => {
+      const channel = new MessageChannel();
+      const timeout = window.setTimeout(() => reject(new Error("истекло время ожидания файлов")), 8000);
+      channel.port1.onmessage = (event) => {
+        window.clearTimeout(timeout);
+        const payload = event.data || {};
+        if (payload.error) {
+          reject(new Error(payload.error));
+          return;
+        }
+        resolve(Array.isArray(payload.receipts) ? payload.receipts : []);
+      };
+      worker.postMessage({ type: "moneyflow:get-shared-receipts" }, [channel.port2]);
+    });
+  }
+
+  async function createSharedReceiptDraft(receipt, index) {
+    const fallbackId = `shared-${Date.now()}-${index}`;
+    const name = String(receipt?.name || `Чек ${index + 1}`);
+    try {
+      const rawQr = await decodeQrFromReceiptImage(receipt?.file);
+      const parsedReceipt = parseReceiptQr(rawQr);
+      return {
+        id: String(receipt?.id || fallbackId),
+        name,
+        status: "ready",
+        amount: parsedReceipt.amount,
+        operationDate: parsedReceipt.operationDate,
+        fiscalNumber: parsedReceipt.fiscalNumber,
+        fiscalDocument: parsedReceipt.fiscalDocument,
+      };
+    } catch (error) {
+      return {
+        id: String(receipt?.id || fallbackId),
+        name,
+        status: "error",
+        error: error?.message || "не удалось распознать QR-код",
+      };
+    }
+  }
+
+  async function decodeQrFromReceiptImage(file) {
+    if (!file || typeof file !== "object") throw new Error("файл изображения не получен");
+    const Detector = globalThis.BarcodeDetector;
+    if (typeof Detector !== "function") {
+      throw new Error("в этом браузере нет распознавания QR из изображения");
+    }
+
+    const image = await createImageBitmap(file);
+    try {
+      let detector;
+      try {
+        detector = new Detector({ formats: ["qr_code"] });
+      } catch {
+        detector = new Detector();
+      }
+      const codes = await detector.detect(image);
+      const rawValue = codes.find((code) => String(code?.rawValue || "").trim())?.rawValue;
+      if (!rawValue) throw new Error("QR-код на изображении не найден");
+      return String(rawValue).trim();
+    } finally {
+      image.close?.();
+    }
+  }
+
+  function parseReceiptQr(rawQr) {
+    const source = String(rawQr || "").trim();
+    const queryText = source.includes("?") ? source.slice(source.indexOf("?") + 1) : source;
+    const params = new URLSearchParams(queryText);
+    const amount = Number(String(params.get("s") || "").replace(",", "."));
+    const operationDate = parseReceiptQrDate(params.get("t"));
+    if (!Number.isFinite(amount) || amount <= 0) throw new Error("в QR нет корректной суммы чека");
+    if (!operationDate) throw new Error("в QR нет корректной даты чека");
+
+    return {
+      amount: round2(amount),
+      operationDate,
+      fiscalNumber: String(params.get("fn") || "").trim(),
+      fiscalDocument: String(params.get("i") || "").trim(),
+    };
+  }
+
+  function parseReceiptQrDate(value) {
+    const match = String(value || "").match(/^(\d{4})(\d{2})(\d{2})T?(\d{2})(\d{2})(\d{2})?$/);
+    if (!match) return "";
+    const [, year, month, day, hour, minute, second = "0"] = match;
+    const date = new Date(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute), Number(second));
+    if (Number.isNaN(date.getTime())) return "";
+    if (date.getFullYear() !== Number(year) || date.getMonth() !== Number(month) - 1 || date.getDate() !== Number(day)) return "";
+    return dateToDateOnlyString(date);
+  }
+
+  function renderSharedReceiptQueue() {
+    if (!elements.sharedReceiptsCard || !elements.sharedReceiptsList) return;
+    const drafts = state.sharedReceiptDrafts;
+    elements.sharedReceiptsCard.hidden = drafts.length === 0;
+    if (elements.sharedReceiptsCount) elements.sharedReceiptsCount.textContent = String(drafts.length);
+    if (!drafts.length) {
+      elements.sharedReceiptsList.innerHTML = "";
+      return;
+    }
+
+    elements.sharedReceiptsList.innerHTML = drafts.map((receipt) => {
+      if (receipt.status !== "ready") {
+        return `<article class="shared-receipt shared-receipt--error" data-shared-receipt-id="${escapeHtml(receipt.id)}"><div><strong>${escapeHtml(receipt.name)}</strong><p>${escapeHtml(receipt.error)}</p></div><button type="button" class="btn btn--secondary" data-shared-receipt-action="dismiss">Убрать</button></article>`;
+      }
+      const fiscalDetails = [receipt.fiscalNumber ? `ФН ${receipt.fiscalNumber}` : "", receipt.fiscalDocument ? `ФД ${receipt.fiscalDocument}` : ""].filter(Boolean).join(" · ");
+      return `<article class="shared-receipt" data-shared-receipt-id="${escapeHtml(receipt.id)}"><div><strong>${escapeHtml(receipt.name)}</strong><p>${escapeHtml(formatOperationDate({ operationDate: receipt.operationDate }))} · <b>${escapeHtml(formatMoney(receipt.amount))} ₽</b></p>${fiscalDetails ? `<small>${escapeHtml(fiscalDetails)}</small>` : ""}</div><div class="shared-receipt-actions"><button type="button" class="btn" data-shared-receipt-action="fill">Открыть операцию</button><button type="button" class="btn btn--secondary" data-shared-receipt-action="dismiss" aria-label="Убрать чек">×</button></div></article>`;
+    }).join("");
+  }
+
+  function onSharedReceiptQueueClick(event) {
+    const actionButton = event.target.closest("[data-shared-receipt-action]");
+    if (!actionButton) return;
+    const row = actionButton.closest("[data-shared-receipt-id]");
+    const receiptId = row?.getAttribute("data-shared-receipt-id");
+    const receipt = state.sharedReceiptDrafts.find((item) => item.id === receiptId);
+    if (!receipt) return;
+
+    if (actionButton.dataset.sharedReceiptAction === "dismiss") {
+      state.sharedReceiptDrafts = state.sharedReceiptDrafts.filter((item) => item.id !== receipt.id);
+      renderSharedReceiptQueue();
+      return;
+    }
+
+    if (receipt.status !== "ready") return;
+    if (state.syncSettings.accessMode === "reader") {
+      showAppNotice("На устройстве читателя операции добавлять нельзя.", "error");
+      return;
+    }
+
+    updateSyncSettingsVisibility(false);
+    updateQuickAddVisibility(true);
+    closeCategoryPicker();
+    setQuickAddMode("add");
+    state.operationType = "expense";
+    syncApplyTypeFromState();
+    setAmountValue(String(receipt.amount));
+    if (elements.categorySelect) elements.categorySelect.value = "";
+    if (elements.categoryPickerInput) elements.categoryPickerInput.value = "";
+    if (elements.descriptionInput) elements.descriptionInput.value = "";
+    setQuickAddDate(normalizeDateForInput(receipt.operationDate));
+    elements.form?.scrollIntoView({ behavior: "smooth", block: "center" });
   }
 
   function bindEvents() {
@@ -299,6 +486,7 @@
     elements.instructionsCloseButton?.addEventListener("click", () => updateInstructionsVisibility(false));
     elements.amountsVisibilityToggleButton?.addEventListener("click", onAmountsVisibilityToggle);
     elements.quickAddToggleButton?.addEventListener("click", onQuickAddToggle);
+    elements.sharedReceiptsList?.addEventListener("click", onSharedReceiptQueueClick);
     elements.operationDatePickerInput?.addEventListener("change", onOperationDatePickerChange);
     elements.operationDatePickerInput?.addEventListener("input", onOperationDatePickerChange);
     elements.operationDatePickerButton?.addEventListener("click", () => openNativeDatePicker(elements.operationDatePickerInput));

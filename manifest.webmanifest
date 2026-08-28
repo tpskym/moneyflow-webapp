@@ -7,6 +7,19 @@
   "background_color": "transparent",
   "theme_color": "#020617",
   "scope": "./",
+  "share_target": {
+    "action": "./receive-check/",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "files": [
+        {
+          "name": "receipts",
+          "accept": ["image/jpeg", "image/png", "image/webp", ".jpg", ".jpeg", ".png", ".webp"]
+        }
+      ]
+    }
+  },
   "icons": [
     {
       "src": "icons/moneyflow.svg?v=120",
