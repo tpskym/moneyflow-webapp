@@ -15,6 +15,7 @@ import {
   getFilteredOperations,
   getOperationsByYear,
   getUuid,
+  normalizeTextForSearch,
   round2,
   sanitizeOperations,
   signedAmount,
@@ -25,7 +26,6 @@ import {
   getAllCategoriesSorted,
   getMatchedCategories,
   normalizeHexColor,
-  normalizeTextForSearch,
   pickCategoryColor,
   sanitizeCategories,
 } from "./modules/category-core.js";
