@@ -139,7 +139,7 @@ export function createCloudController(context, { createId }) {
     };
   }
   async function uploadToGoogleDrive() {
-    call("setSyncStatus", "Открываю вход Google и шифрую полный файл...");
+    call("setSyncStatus", "Проверяю доступность сервера авторизации Google...");
     try {
       const accessToken = await getGoogleAccessToken(
         "https://www.googleapis.com/auth/drive.file",
@@ -182,7 +182,7 @@ export function createCloudController(context, { createId }) {
   async function downloadFromGoogleDrive({
     skipReplaceConfirmation = false,
   } = {}) {
-    call("setSyncStatus", "Открываю вход Google и загружаю файл...");
+    call("setSyncStatus", "Проверяю доступность сервера авторизации Google...");
     try {
       const accessToken = await getGoogleAccessToken(
         "https://www.googleapis.com/auth/drive.readonly",
