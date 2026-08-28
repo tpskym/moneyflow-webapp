@@ -244,7 +244,7 @@
     if (isLocalHost) return;
     if (!("serviceWorker" in navigator)) return;
     window.addEventListener("load", () => {
-      navigator.serviceWorker.register("sw.js?v=145").then((registration) => registration.update()).catch(() => {});
+      navigator.serviceWorker.register("sw.js?v=147").then((registration) => registration.update()).catch(() => {});
     });
   }
 
@@ -499,6 +499,11 @@
     elements.sharedReceiptsList?.addEventListener("click", onSharedReceiptQueueClick);
     navigator.serviceWorker?.addEventListener("message", (event) => {
       if (event.data?.type === "moneyflow:shared-receipts-ready") receiveSharedReceiptsFromShareTarget();
+    });
+    window.addEventListener("focus", () => receiveSharedReceiptsFromShareTarget());
+    window.addEventListener("pageshow", () => receiveSharedReceiptsFromShareTarget());
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") receiveSharedReceiptsFromShareTarget();
     });
     elements.operationDatePickerInput?.addEventListener("change", onOperationDatePickerChange);
     elements.operationDatePickerInput?.addEventListener("input", onOperationDatePickerChange);
