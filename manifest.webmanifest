@@ -7,6 +7,9 @@
   "background_color": "transparent",
   "theme_color": "#020617",
   "scope": "./",
+  "launch_handler": {
+    "client_mode": "navigate-existing"
+  },
   "share_target": {
     "action": "./",
     "method": "POST",

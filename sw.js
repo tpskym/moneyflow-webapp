@@ -1,12 +1,12 @@
-const CACHE_NAME = "moneyflow-v167";
+const CACHE_NAME = "moneyflow-v168";
 const SHARED_RECEIPTS_DB = "moneyflow-shared-receipts-v1";
 const SHARED_RECEIPTS_STORE = "receipts";
 const ASSETS = [
   "./",
   "./index.html",
-  "./styles.css?v=167",
-  "./vendor/jsqr/jsQR.js?v=167",
-  "./app.js?v=167",
+  "./styles.css?v=168",
+  "./vendor/jsqr/jsQR.js?v=168",
+  "./app.js?v=168",
   "./modules/receipt-parser.js",
   "./modules/receipt-scanner.js",
   "./modules/dates.js",
@@ -29,7 +29,7 @@ const ASSETS = [
   "./modules/data-actions-controller.js",
   "./modules/cloud-controller.js",
   "./modules/reader-access-controller.js",
-  "./manifest.webmanifest?v=167",
+  "./manifest.webmanifest?v=168",
   "./icons/moneyflow.svg",
   "./vendor/pdfjs/pdf.min.mjs",
   "./vendor/pdfjs/pdf.worker.min.mjs",
@@ -39,10 +39,12 @@ self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(async (cache) => {
       for (const item of ASSETS) {
+        const request = new Request(new URL(item, self.registration.scope), { cache: "reload" });
         try {
-          await cache.add(item);
+          await cache.add(request);
         } catch {
-          // no-op for relative/static mismatch in local file mode
+          const cached = await caches.match(request, { ignoreSearch: true });
+          if (cached) await cache.put(request, cached);
         }
       }
     })
@@ -52,15 +54,17 @@ self.addEventListener("install", (event) => {
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(
-        keys
-          .filter((key) => key !== CACHE_NAME)
-          .map((key) => caches.delete(key))
-      )
-    )
+    Promise.all([
+      caches.keys().then((keys) =>
+        Promise.all(
+          keys
+            .filter((key) => key !== CACHE_NAME)
+            .map((key) => caches.delete(key))
+        )
+      ),
+      self.clients.claim(),
+    ])
   );
-  self.clients.claim();
 });
 
 self.addEventListener("fetch", (event) => {
@@ -215,7 +219,7 @@ function isAppShellRequest(request) {
 }
 
 function fetchAndCache(request) {
-  return fetch(request)
+  return fetch(new Request(request, { cache: "no-cache" }))
     .then((response) => {
       const cloned = response.clone();
       if (response.ok && response.status === 200 && cloned.url.startsWith("http")) {

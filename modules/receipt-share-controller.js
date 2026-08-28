@@ -213,6 +213,11 @@ export function createReceiptShareController(context) {
     return scanner;
   }
   function bind() {
+    const scheduleReceive = () => {
+      [0, 250, 1000, 2500].forEach((delay) =>
+        window.setTimeout(receiveFromShareTarget, delay),
+      );
+    };
     elements.sharedReceiptsList?.addEventListener("click", onQueueClick);
     elements.receiptScanToggleButton?.addEventListener("click", () =>
       getScanner().toggle(),
@@ -222,12 +227,12 @@ export function createReceiptShareController(context) {
     );
     navigator.serviceWorker?.addEventListener("message", (event) => {
       if (event.data?.type === "moneyflow:shared-receipts-ready")
-        receiveFromShareTarget();
+        scheduleReceive();
     });
-    window.addEventListener("focus", receiveFromShareTarget);
-    window.addEventListener("pageshow", receiveFromShareTarget);
+    window.addEventListener("focus", scheduleReceive);
+    window.addEventListener("pageshow", scheduleReceive);
     document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible") receiveFromShareTarget();
+      if (document.visibilityState === "visible") scheduleReceive();
     });
   }
   return { bind, receiveFromShareTarget, renderQueue };
