@@ -72,7 +72,7 @@ test("оставляет понятную ошибку при запрете к�
   assert.match(elements.status.textContent, /Permission denied/);
 });
 
-test("повторяет запуск камеры без выбора задней камеры", async () => {
+test("при ошибке строгого выбора повторяет запуск с предпочтением задней камеры", async () => {
   const elements = createElements();
   const constraints = [];
   const scanner = createReceiptScanner({
@@ -94,8 +94,38 @@ test("повторяет запуск камеры без выбора задн�
 
   assert.deepEqual(constraints, [
     { audio: false, video: { facingMode: { exact: "environment" } } },
-    { audio: false, video: true },
+    { audio: false, video: { facingMode: { ideal: "environment" } } },
   ]);
+});
+
+test("переключает ошибочно открытую фронтальную камеру на найденную заднюю", async () => {
+  const elements = createElements();
+  const constraints = [];
+  let frontStopped = false;
+  const frontStream = {
+    getTracks: () => [{ stop: () => { frontStopped = true; } }],
+    getVideoTracks: () => [{ getSettings: () => ({ deviceId: "front", facingMode: "user" }) }],
+  };
+  const rearStream = { getTracks: () => [] };
+  const scanner = createReceiptScanner({
+    elements,
+    getUserMedia: async (request) => {
+      constraints.push(request);
+      return constraints.length === 1 ? frontStream : rearStream;
+    },
+    enumerateDevices: async () => [
+      { kind: "videoinput", deviceId: "front", label: "Camera facing front" },
+      { kind: "videoinput", deviceId: "rear", label: "Camera2 0, facing back" },
+    ],
+    createDetector: () => ({ detect: async () => [] }),
+    scheduleFrame: () => 1,
+  });
+
+  await scanner.toggle();
+
+  assert.equal(frontStopped, true);
+  assert.equal(elements.video.srcObject, rearStream);
+  assert.deepEqual(constraints[1], { audio: false, video: { deviceId: { exact: "rear" } } });
 });
 
 test("повторяет запуск камеры при ошибке Android без имени ошибки", async () => {

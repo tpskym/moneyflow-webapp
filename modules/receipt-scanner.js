@@ -9,6 +9,7 @@ export function createReceiptScanner({
   detectQr = detectQrFromSource,
   parseReceipt = parseReceiptQr,
   requestCamera = defaultRequestCamera,
+  enumerateDevices = defaultEnumerateDevices,
   cameraWaitingNoticeMs = 8000,
   scheduleFrame = defaultScheduleFrame,
   cancelFrame = defaultCancelFrame,
@@ -31,6 +32,7 @@ export function createReceiptScanner({
     try {
       detector = createDetector();
       stream = await requestCamera(getUserMedia, {
+        enumerateDevices,
         waitingNoticeMs: cameraWaitingNoticeMs,
         onWaiting: () => setStatus("Android всё ещё запускает камеру. Проверьте системное окно разрешения."),
         onRetry: () => setStatus("Задняя камера недоступна. Пробую открыть доступную камеру..."),
@@ -95,9 +97,15 @@ function defaultGetUserMedia(constraints) {
   return navigator.mediaDevices.getUserMedia(constraints);
 }
 
-async function defaultRequestCamera(getUserMedia, { waitingNoticeMs = 8000, onWaiting = () => {}, onRetry = () => {} } = {}) {
+async function defaultRequestCamera(getUserMedia, {
+  enumerateDevices = defaultEnumerateDevices,
+  waitingNoticeMs = 8000,
+  onWaiting = () => {},
+  onRetry = () => {},
+} = {}) {
+  let initialStream;
   try {
-    return await getUserMediaWithWaitingNotice(
+    initialStream = await getUserMediaWithWaitingNotice(
       getUserMedia,
       { audio: false, video: { facingMode: { exact: "environment" } } },
       waitingNoticeMs,
@@ -106,13 +114,45 @@ async function defaultRequestCamera(getUserMedia, { waitingNoticeMs = 8000, onWa
   } catch (error) {
     if (!shouldRetryCamera(error)) throw error;
     onRetry();
-    return getUserMediaWithWaitingNotice(
+    initialStream = await getUserMediaWithWaitingNotice(
       getUserMedia,
-      { audio: false, video: true },
+      { audio: false, video: { facingMode: { ideal: "environment" } } },
       waitingNoticeMs,
       onWaiting,
     );
   }
+
+  return switchToRearCameraIfNeeded(initialStream, getUserMedia, enumerateDevices, waitingNoticeMs, onWaiting);
+}
+
+async function switchToRearCameraIfNeeded(stream, getUserMedia, enumerateDevices, waitingNoticeMs, onWaiting) {
+  const activeTrack = stream?.getVideoTracks?.()[0];
+  const activeSettings = activeTrack?.getSettings?.() || {};
+  if (activeSettings.facingMode === "environment") return stream;
+
+  let devices;
+  try {
+    devices = await enumerateDevices();
+  } catch {
+    return stream;
+  }
+
+  const rearCamera = devices.find((device) =>
+    device?.kind === "videoinput" && /back|rear|environment|задн|тыл/i.test(String(device.label || "")),
+  );
+  if (!rearCamera?.deviceId || rearCamera.deviceId === activeSettings.deviceId) return stream;
+
+  stream?.getTracks?.().forEach((track) => track.stop());
+  return getUserMediaWithWaitingNotice(
+    getUserMedia,
+    { audio: false, video: { deviceId: { exact: rearCamera.deviceId } } },
+    waitingNoticeMs,
+    onWaiting,
+  );
+}
+
+function defaultEnumerateDevices() {
+  return globalThis.navigator?.mediaDevices?.enumerateDevices?.() || Promise.resolve([]);
 }
 
 function getUserMediaWithWaitingNotice(getUserMedia, constraints, waitingNoticeMs, onWaiting) {
