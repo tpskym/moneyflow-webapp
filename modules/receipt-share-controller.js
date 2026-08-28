@@ -89,6 +89,7 @@ export function createReceiptShareController(context) {
     const sharedLaunch = url.searchParams.get("shared-checks") === "1";
     if (sharedLaunch) {
       url.searchParams.delete("shared-checks");
+      url.searchParams.delete("share-event");
       window.history.replaceState(
         {},
         "",

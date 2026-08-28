@@ -1,12 +1,12 @@
-const CACHE_NAME = "moneyflow-v170";
+const CACHE_NAME = "moneyflow-v171";
 const SHARED_RECEIPTS_DB = "moneyflow-shared-receipts-v1";
 const SHARED_RECEIPTS_STORE = "receipts";
 const ASSETS = [
   "./",
   "./index.html",
-  "./styles.css?v=170",
-  "./vendor/jsqr/jsQR.js?v=170",
-  "./app.js?v=170",
+  "./styles.css?v=171",
+  "./vendor/jsqr/jsQR.js?v=171",
+  "./app.js?v=171",
   "./modules/receipt-parser.js",
   "./modules/receipt-scanner.js",
   "./modules/dates.js",
@@ -29,7 +29,7 @@ const ASSETS = [
   "./modules/data-actions-controller.js",
   "./modules/cloud-controller.js",
   "./modules/reader-access-controller.js",
-  "./manifest.webmanifest?v=170",
+  "./manifest.webmanifest?v=171",
   "./icons/moneyflow.svg",
   "./vendor/pdfjs/pdf.min.mjs",
   "./vendor/pdfjs/pdf.worker.min.mjs",
@@ -124,14 +124,17 @@ function isReceiptShareRequest(request) {
 async function handleReceiptShare(request) {
   const formData = await request.formData();
   const receipts = formData.getAll("receipts").filter((item) => item && typeof item.arrayBuffer === "function");
+  const launchUrl = new URL("./", self.registration.scope);
+  launchUrl.searchParams.set("shared-checks", "1");
+  launchUrl.searchParams.set("share-event", String(Date.now()));
   if (receipts.length) {
     await saveSharedReceipts(receipts);
-    await notifySharedReceiptsAvailable();
+    await activateSharedReceiptsClient(launchUrl.href);
   }
-  return Response.redirect(new URL("./?shared-checks=1", self.registration.scope).href, 303);
+  return Response.redirect(launchUrl.href, 303);
 }
 
-async function notifySharedReceiptsAvailable() {
+async function activateSharedReceiptsClient(launchUrl) {
   const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
   clients.forEach((client) => client.postMessage({ type: "moneyflow:shared-receipts-ready" }));
   const appClient = clients.find((client) => {
@@ -141,13 +144,32 @@ async function notifySharedReceiptsAvailable() {
       return false;
     }
   });
-  if (appClient && "focus" in appClient) {
+  if (!appClient) return null;
+
+  let targetClient = appClient;
+  if ("navigate" in appClient) {
     try {
-      await appClient.focus();
+      targetClient = (await appClient.navigate(launchUrl)) || appClient;
     } catch {
-      // Redirect from the share request remains the fallback launch path.
+      targetClient = appClient;
     }
   }
+  if ("focus" in targetClient) {
+    try {
+      await targetClient.focus();
+      return targetClient;
+    } catch {
+      // openWindow below is the final Android fallback.
+    }
+  }
+  if (self.clients.openWindow) {
+    try {
+      return await self.clients.openWindow(launchUrl);
+    } catch {
+      return null;
+    }
+  }
+  return null;
 }
 
 async function saveSharedReceipts(files) {
