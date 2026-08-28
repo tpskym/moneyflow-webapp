@@ -175,6 +175,7 @@
   let operationsLoadObserver = null;
   let cloudActionInProgress = false;
   let sharedReceiptReceiveInProgress = false;
+  let pdfJsLibraryPromise = null;
 
   async function main() {
     enableLiveReload();
@@ -243,9 +244,7 @@
     const isLocalHost = ["localhost", "127.0.0.1", "::1"].includes(location.hostname);
     if (isLocalHost) return;
     if (!("serviceWorker" in navigator)) return;
-    window.addEventListener("load", () => {
-      navigator.serviceWorker.register("sw.js?v=147").then((registration) => registration.update()).catch(() => {});
-    });
+    navigator.serviceWorker.register("sw.js?v=148").then((registration) => registration.update()).catch(() => {});
   }
 
   async function receiveSharedReceiptsFromShareTarget() {
@@ -314,7 +313,7 @@
     const fallbackId = `shared-${Date.now()}-${index}`;
     const name = String(receipt?.name || `Чек ${index + 1}`);
     try {
-      const rawQr = await decodeQrFromReceiptImage(receipt?.file);
+      const rawQr = await decodeQrFromReceiptFile(receipt?.file, name);
       const parsedReceipt = parseReceiptQr(rawQr);
       return {
         id: String(receipt?.id || fallbackId),
@@ -335,28 +334,83 @@
     }
   }
 
-  async function decodeQrFromReceiptImage(file) {
-    if (!file || typeof file !== "object") throw new Error("файл изображения не получен");
+  async function decodeQrFromReceiptFile(file, name) {
+    if (isPdfReceiptFile(file, name)) return decodeQrFromReceiptPdf(file);
+    return decodeQrFromReceiptImage(file);
+  }
+
+  function isPdfReceiptFile(file, name) {
+    return String(file?.type || "").toLowerCase() === "application/pdf" || /\.pdf$/i.test(String(name || file?.name || ""));
+  }
+
+  function createQrDetector() {
     const Detector = globalThis.BarcodeDetector;
     if (typeof Detector !== "function") {
       throw new Error("в этом браузере нет распознавания QR из изображения");
     }
+    try {
+      return new Detector({ formats: ["qr_code"] });
+    } catch {
+      return new Detector();
+    }
+  }
 
+  async function detectQrFromSource(source, detector = createQrDetector()) {
+    const codes = await detector.detect(source);
+    const rawValue = codes.find((code) => String(code?.rawValue || "").trim())?.rawValue;
+    return rawValue ? String(rawValue).trim() : "";
+  }
+
+  async function decodeQrFromReceiptImage(file) {
+    if (!file || typeof file !== "object") throw new Error("файл изображения не получен");
     const image = await createImageBitmap(file);
     try {
-      let detector;
-      try {
-        detector = new Detector({ formats: ["qr_code"] });
-      } catch {
-        detector = new Detector();
-      }
-      const codes = await detector.detect(image);
-      const rawValue = codes.find((code) => String(code?.rawValue || "").trim())?.rawValue;
+      const rawValue = await detectQrFromSource(image);
       if (!rawValue) throw new Error("QR-код на изображении не найден");
-      return String(rawValue).trim();
+      return rawValue;
     } finally {
       image.close?.();
     }
+  }
+
+  async function decodeQrFromReceiptPdf(file) {
+    if (!file || typeof file.arrayBuffer !== "function") throw new Error("PDF-файл не получен");
+    const pdfjs = await getPdfJsLibrary();
+    const loadingTask = pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) });
+    const pdf = await loadingTask.promise;
+    const detector = createQrDetector();
+
+    try {
+      const pageLimit = Math.min(pdf.numPages, 12);
+      for (let pageNumber = 1; pageNumber <= pageLimit; pageNumber += 1) {
+        const page = await pdf.getPage(pageNumber);
+        const baseViewport = page.getViewport({ scale: 2.5 });
+        const scale = Math.min(1, 2400 / Math.max(baseViewport.width, baseViewport.height));
+        const viewport = page.getViewport({ scale: 2.5 * scale });
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.ceil(viewport.width);
+        canvas.height = Math.ceil(viewport.height);
+        const context = canvas.getContext("2d", { alpha: false });
+        if (!context) throw new Error("не удалось подготовить страницу PDF");
+        await page.render({ canvasContext: context, viewport }).promise;
+        const rawValue = await detectQrFromSource(canvas, detector);
+        page.cleanup();
+        if (rawValue) return rawValue;
+      }
+      throw new Error("QR-код не найден на первых 12 страницах PDF");
+    } finally {
+      await loadingTask.destroy();
+    }
+  }
+
+  function getPdfJsLibrary() {
+    if (!pdfJsLibraryPromise) {
+      pdfJsLibraryPromise = import("./vendor/pdfjs/pdf.min.mjs").then((pdfjs) => {
+        pdfjs.GlobalWorkerOptions.workerSrc = new URL("vendor/pdfjs/pdf.worker.min.mjs", window.location.href).href;
+        return pdfjs;
+      });
+    }
+    return pdfJsLibraryPromise;
   }
 
   function parseReceiptQr(rawQr) {

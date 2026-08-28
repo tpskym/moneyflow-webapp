@@ -1,13 +1,15 @@
-const CACHE_NAME = "moneyflow-v147";
+const CACHE_NAME = "moneyflow-v148";
 const SHARED_RECEIPTS_DB = "moneyflow-shared-receipts-v1";
 const SHARED_RECEIPTS_STORE = "receipts";
 const ASSETS = [
   "./",
   "./index.html",
-  "./styles.css?v=147",
-  "./app.js?v=147",
-  "./manifest.webmanifest?v=147",
+  "./styles.css?v=148",
+  "./app.js?v=148",
+  "./manifest.webmanifest?v=148",
   "./icons/moneyflow.svg",
+  "./vendor/pdfjs/pdf.min.mjs",
+  "./vendor/pdfjs/pdf.worker.min.mjs",
 ];
 
 self.addEventListener("install", (event) => {
@@ -93,7 +95,7 @@ function isReceiptShareRequest(request) {
   if (request.method !== "POST") return false;
   const scope = new URL(self.registration.scope);
   const url = new URL(request.url);
-  return url.origin === scope.origin && url.pathname === new URL("receive-check/", scope).pathname;
+  return url.origin === scope.origin && [scope.pathname, new URL("receive-check/", scope).pathname].includes(url.pathname);
 }
 
 async function handleReceiptShare(request) {
