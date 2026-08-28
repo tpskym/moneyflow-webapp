@@ -11,7 +11,7 @@
     "client_mode": "navigate-existing"
   },
   "share_target": {
-    "action": "./",
+    "action": "./receive-check/",
     "method": "POST",
     "enctype": "multipart/form-data",
     "params": {

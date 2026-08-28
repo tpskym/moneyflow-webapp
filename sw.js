@@ -1,12 +1,12 @@
-const CACHE_NAME = "moneyflow-v172";
+const CACHE_NAME = "moneyflow-v173";
 const SHARED_RECEIPTS_DB = "moneyflow-shared-receipts-v1";
 const SHARED_RECEIPTS_STORE = "receipts";
 const ASSETS = [
   "./",
   "./index.html",
-  "./styles.css?v=172",
-  "./vendor/jsqr/jsQR.js?v=172",
-  "./app.js?v=172",
+  "./styles.css?v=173",
+  "./vendor/jsqr/jsQR.js?v=173",
+  "./app.js?v=173",
   "./modules/receipt-parser.js",
   "./modules/receipt-scanner.js",
   "./modules/dates.js",
@@ -29,7 +29,7 @@ const ASSETS = [
   "./modules/data-actions-controller.js",
   "./modules/cloud-controller.js",
   "./modules/reader-access-controller.js",
-  "./manifest.webmanifest?v=172",
+  "./manifest.webmanifest?v=173",
   "./icons/moneyflow.svg",
   "./vendor/pdfjs/pdf.min.mjs",
   "./vendor/pdfjs/pdf.worker.min.mjs",
@@ -129,47 +129,14 @@ async function handleReceiptShare(request) {
   launchUrl.searchParams.set("share-event", String(Date.now()));
   if (receipts.length) {
     await saveSharedReceipts(receipts);
-    await activateSharedReceiptsClient(launchUrl.href);
+    await notifySharedReceiptsAvailable();
   }
   return Response.redirect(launchUrl.href, 303);
 }
 
-async function activateSharedReceiptsClient(launchUrl) {
+async function notifySharedReceiptsAvailable() {
   const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
   clients.forEach((client) => client.postMessage({ type: "moneyflow:shared-receipts-ready" }));
-  const appClient = clients.find((client) => {
-    try {
-      return new URL(client.url).pathname.startsWith(new URL(self.registration.scope).pathname);
-    } catch {
-      return false;
-    }
-  });
-  if (!appClient) return null;
-
-  let targetClient = appClient;
-  if ("navigate" in appClient) {
-    try {
-      targetClient = (await appClient.navigate(launchUrl)) || appClient;
-    } catch {
-      targetClient = appClient;
-    }
-  }
-  if ("focus" in targetClient) {
-    try {
-      await targetClient.focus();
-      return targetClient;
-    } catch {
-      // openWindow below is the final Android fallback.
-    }
-  }
-  if (self.clients.openWindow) {
-    try {
-      return await self.clients.openWindow(launchUrl);
-    } catch {
-      return null;
-    }
-  }
-  return null;
 }
 
 async function saveSharedReceipts(files) {

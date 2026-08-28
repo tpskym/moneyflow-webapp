@@ -3,22 +3,13 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import vm from "node:vm";
 
-test("Share Target навигирует и фокусирует уже открытое окно PWA", async () => {
-  const messages = [];
-  const navigations = [];
-  let focused = 0;
-  const appClient = {
-    url: "https://example.test/moneyflow/",
-    postMessage: (message) => messages.push(message),
-    async navigate(url) {
-      navigations.push(url);
-      return this;
-    },
-    async focus() {
-      focused += 1;
-      return this;
-    },
-  };
+test("Share Target использует отдельный POST endpoint без конфликтующей навигации", async () => {
+  const manifest = JSON.parse(
+    await readFile(new URL("../manifest.webmanifest", import.meta.url), "utf8"),
+  );
+  assert.equal(manifest.share_target.action, "./receive-check/");
+  assert.equal(manifest.launch_handler.client_mode, "navigate-existing");
+
   const source = await readFile(new URL("../sw.js", import.meta.url), "utf8");
   const context = {
     URL,
@@ -30,27 +21,21 @@ test("Share Target навигирует и фокусирует уже откр�
       addEventListener() {},
       registration: { scope: "https://example.test/moneyflow/" },
       clients: {
-        matchAll: async () => [appClient],
+        matchAll: async () => [],
         claim: async () => {},
-        openWindow: async () => null,
       },
       skipWaiting() {},
     },
   };
   vm.runInNewContext(
-    `${source}\nglobalThis.__activateSharedReceiptsClient = activateSharedReceiptsClient;`,
+    `${source}\nglobalThis.__isReceiptShareRequest = isReceiptShareRequest;`,
     context,
   );
 
-  const result = await context.__activateSharedReceiptsClient(
-    "https://example.test/moneyflow/?shared-checks=1&share-event=1",
+  const request = new Request(
+    "https://example.test/moneyflow/receive-check/",
+    { method: "POST", body: new FormData() },
   );
 
-  assert.equal(result, appClient);
-  assert.equal(messages.length, 1);
-  assert.equal(messages[0].type, "moneyflow:shared-receipts-ready");
-  assert.deepEqual(navigations, [
-    "https://example.test/moneyflow/?shared-checks=1&share-event=1",
-  ]);
-  assert.equal(focused, 1);
+  assert.equal(context.__isReceiptShareRequest(request), true);
 });
