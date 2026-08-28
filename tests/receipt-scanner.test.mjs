@@ -93,7 +93,7 @@ test("повторяет запуск камеры без выбора задн�
   await scanner.toggle();
 
   assert.deepEqual(constraints, [
-    { audio: false, video: { facingMode: { ideal: "environment" } } },
+    { audio: false, video: { facingMode: { exact: "environment" } } },
     { audio: false, video: true },
   ]);
 });
@@ -117,17 +117,29 @@ test("повторяет запуск камеры при ошибке Android �
   assert.equal(constraints.length, 2);
 });
 
-test("не зависает, если Android не отвечает на запрос камеры", async () => {
+test("не запускает второй запрос, пока Android запускает первую камеру", async () => {
   const elements = createElements();
+  let resolveCamera;
+  let requests = 0;
   const scanner = createReceiptScanner({
     elements,
-    getUserMedia: () => new Promise(() => {}),
+    getUserMedia: () => {
+      requests += 1;
+      return new Promise((resolve) => {
+        resolveCamera = resolve;
+      });
+    },
     createDetector: () => ({ detect: async () => [] }),
-    cameraRequestTimeoutMs: 5,
+    cameraWaitingNoticeMs: 5,
+    scheduleFrame: () => 1,
   });
 
-  await scanner.toggle();
+  const opening = scanner.toggle();
+  await new Promise((resolve) => setTimeout(resolve, 15));
 
-  assert.equal(elements.card.hidden, false);
-  assert.match(elements.status.textContent, /Android не показал запрос доступа/);
+  assert.equal(requests, 1);
+  assert.match(elements.status.textContent, /Android всё ещё запускает камеру/);
+  resolveCamera({ getTracks: () => [] });
+  await opening;
+  assert.equal(requests, 1);
 });

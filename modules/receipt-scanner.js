@@ -9,7 +9,7 @@ export function createReceiptScanner({
   detectQr = detectQrFromSource,
   parseReceipt = parseReceiptQr,
   requestCamera = defaultRequestCamera,
-  cameraRequestTimeoutMs = 8000,
+  cameraWaitingNoticeMs = 8000,
   scheduleFrame = defaultScheduleFrame,
   cancelFrame = defaultCancelFrame,
 } = {}) {
@@ -31,8 +31,9 @@ export function createReceiptScanner({
     try {
       detector = createDetector();
       stream = await requestCamera(getUserMedia, {
-        timeoutMs: cameraRequestTimeoutMs,
-        onRetry: () => setStatus("Первый запрос не ответил. Пробую открыть камеру без выбора объектива..."),
+        waitingNoticeMs: cameraWaitingNoticeMs,
+        onWaiting: () => setStatus("Android всё ещё запускает камеру. Проверьте системное окно разрешения."),
+        onRetry: () => setStatus("Задняя камера недоступна. Пробую открыть доступную камеру..."),
       });
       elements.video.srcObject = stream;
       await elements.video.play();
@@ -94,45 +95,35 @@ function defaultGetUserMedia(constraints) {
   return navigator.mediaDevices.getUserMedia(constraints);
 }
 
-async function defaultRequestCamera(getUserMedia, { timeoutMs = 8000, onRetry = () => {} } = {}) {
+async function defaultRequestCamera(getUserMedia, { waitingNoticeMs = 8000, onWaiting = () => {}, onRetry = () => {} } = {}) {
   try {
-    return await getUserMediaWithTimeout(
+    return await getUserMediaWithWaitingNotice(
       getUserMedia,
-      { audio: false, video: { facingMode: { ideal: "environment" } } },
-      timeoutMs,
+      { audio: false, video: { facingMode: { exact: "environment" } } },
+      waitingNoticeMs,
+      onWaiting,
     );
   } catch (error) {
     if (!shouldRetryCamera(error)) throw error;
     onRetry();
-    return getUserMediaWithTimeout(getUserMedia, { audio: false, video: true }, timeoutMs);
+    return getUserMediaWithWaitingNotice(
+      getUserMedia,
+      { audio: false, video: true },
+      waitingNoticeMs,
+      onWaiting,
+    );
   }
 }
 
-function getUserMediaWithTimeout(getUserMedia, constraints, timeoutMs) {
-  let expired = false;
-  let timer;
-  const request = Promise.resolve()
+function getUserMediaWithWaitingNotice(getUserMedia, constraints, waitingNoticeMs, onWaiting) {
+  const timer = setTimeout(onWaiting, Math.max(1, Number(waitingNoticeMs) || 8000));
+  return Promise.resolve()
     .then(() => getUserMedia(constraints))
-    .then((mediaStream) => {
-      if (!expired) return mediaStream;
-      mediaStream?.getTracks?.().forEach((track) => track.stop());
-      const error = new Error("Android не ответил на запрос камеры");
-      error.name = "TimeoutError";
-      throw error;
-    });
-  const timeout = new Promise((_, reject) => {
-    timer = setTimeout(() => {
-      expired = true;
-      const error = new Error("Android не ответил на запрос камеры");
-      error.name = "TimeoutError";
-      reject(error);
-    }, Math.max(1, Number(timeoutMs) || 8000));
-  });
-  return Promise.race([request, timeout]).finally(() => clearTimeout(timer));
+    .finally(() => clearTimeout(timer));
 }
 
 function shouldRetryCamera(error) {
-  if (["AbortError", "NotFoundError", "NotReadableError", "OverconstrainedError", "TimeoutError"].includes(error?.name)) return true;
+  if (["AbortError", "NotFoundError", "NotReadableError", "OverconstrainedError"].includes(error?.name)) return true;
   return /could not start (video|camera) (service|source)/i.test(String(error?.message || ""));
 }
 
@@ -142,8 +133,6 @@ function getScannerErrorMessage(error) {
   if (error?.name === "NotReadableError" || /could not start (video|camera) (service|source)/i.test(String(error?.message || "")))
     return "камера занята или отключена системой: закройте приложения с камерой и включите доступ к камере в шторке Android";
   if (error?.name === "NotFoundError") return "камера не найдена";
-  if (error?.name === "TimeoutError")
-    return "Android не показал запрос доступа к камере; разрешите камеру для Chrome в настройках сайта и приложения";
   return error?.message || "нет доступа к камере";
 }
 
