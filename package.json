@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "node dev-server.js",
     "start": "npm run dev",
-    "test": "node --test"
+    "test": "node scripts/check-file-size.mjs && node --test"
   },
   "author": "moneyflow-local",
   "license": "MIT"

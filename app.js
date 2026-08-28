@@ -4,6 +4,7 @@ import {
   detectQrFromSource as detectReceiptQrFromSource,
   parseReceiptQr as parseReceiptQrFromValue,
 } from "./modules/receipt-parser.js";
+import { createReceiptScanner } from "./modules/receipt-scanner.js";
 
 (() => {
   const STORAGE_KEYS = {
@@ -187,10 +188,7 @@ import {
   let operationsLoadObserver = null;
   let cloudActionInProgress = false;
   let sharedReceiptReceiveInProgress = false;
-  let receiptScannerStream = null;
-  let receiptScannerFrameId = null;
-  let receiptScannerBusy = false;
-  let receiptScannerDetector = null;
+  let receiptScanner = null;
 
   async function main() {
     enableLiveReload();
@@ -402,82 +400,38 @@ import {
     elements.form?.scrollIntoView({ behavior: "smooth", block: "center" });
   }
 
-  async function onReceiptScanToggle() {
-    if (state.syncSettings.accessMode === "reader") return;
-    if (!elements.receiptScannerCard || !elements.receiptScannerVideo) return;
-
-    if (!elements.receiptScannerCard.hidden) {
-      closeReceiptScanner();
-      return;
-    }
-
-    elements.receiptScannerCard.hidden = false;
-    if (!navigator.mediaDevices?.getUserMedia) {
-      elements.receiptScannerStatus.textContent = "Камера недоступна в этом браузере.";
-      return;
-    }
-
-    try {
-      receiptScannerDetector = createReceiptQrDetector();
-      elements.receiptScannerStatus.textContent = "Запрашиваю доступ к камере...";
-      receiptScannerStream = await navigator.mediaDevices.getUserMedia({
-        audio: false,
-        video: { facingMode: { ideal: "environment" } },
-      });
-      elements.receiptScannerVideo.srcObject = receiptScannerStream;
-      await elements.receiptScannerVideo.play();
-      elements.receiptScannerStatus.textContent = "Наведите камеру на QR-код чека.";
-      scanReceiptCameraFrame();
-    } catch (error) {
-      elements.receiptScannerStatus.textContent = `Не удалось открыть сканер: ${error?.message || "нет доступа к камере"}.`;
-      closeReceiptScanner({ keepMessage: true });
-    }
+  function getReceiptScanner() {
+    if (receiptScanner) return receiptScanner;
+    receiptScanner = createReceiptScanner({
+      elements: {
+        card: elements.receiptScannerCard,
+        status: elements.receiptScannerStatus,
+        video: elements.receiptScannerVideo,
+      },
+      isReadOnly: () => state.syncSettings.accessMode === "reader",
+      createDetector: createReceiptQrDetector,
+      detectQr: detectReceiptQrFromSource,
+      parseReceipt: parseReceiptQrFromValue,
+      onReceiptRecognized: (parsedReceipt) => {
+        state.sharedReceiptDrafts.unshift({
+          id: `scan-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+          name: "Сканированный чек",
+          status: "ready",
+          ...parsedReceipt,
+        });
+        renderSharedReceiptQueue();
+        elements.sharedReceiptsCard?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      },
+    });
+    return receiptScanner;
   }
 
-  async function scanReceiptCameraFrame() {
-    const video = elements.receiptScannerVideo;
-    if (!receiptScannerStream || !video || elements.receiptScannerCard?.hidden) return;
-
-    if (!receiptScannerBusy && video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
-      receiptScannerBusy = true;
-      try {
-        const rawQr = await detectReceiptQrFromSource(video, receiptScannerDetector);
-        if (rawQr) {
-          const parsedReceipt = parseReceiptQrFromValue(rawQr);
-          state.sharedReceiptDrafts.unshift({
-            id: `scan-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-            name: "Сканированный чек",
-            status: "ready",
-            ...parsedReceipt,
-          });
-          closeReceiptScanner();
-          renderSharedReceiptQueue();
-          elements.sharedReceiptsCard?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-          return;
-        }
-      } catch {
-        // A non-receipt QR or a failed frame must not interrupt camera scanning.
-      } finally {
-        receiptScannerBusy = false;
-      }
-    }
-
-    if (receiptScannerStream) receiptScannerFrameId = requestAnimationFrame(scanReceiptCameraFrame);
+  function onReceiptScanToggle() {
+    return getReceiptScanner().toggle();
   }
 
-  function closeReceiptScanner({ keepMessage = false } = {}) {
-    if (receiptScannerFrameId) cancelAnimationFrame(receiptScannerFrameId);
-    receiptScannerFrameId = null;
-    receiptScannerBusy = false;
-    receiptScannerStream?.getTracks().forEach((track) => track.stop());
-    receiptScannerStream = null;
-    receiptScannerDetector = null;
-
-    if (elements.receiptScannerVideo) {
-      elements.receiptScannerVideo.pause();
-      elements.receiptScannerVideo.srcObject = null;
-    }
-    if (elements.receiptScannerCard) elements.receiptScannerCard.hidden = keepMessage ? false : true;
+  function closeReceiptScanner() {
+    receiptScanner?.close();
   }
 
   function bindEvents() {
