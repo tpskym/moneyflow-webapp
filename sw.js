@@ -1,12 +1,12 @@
-const CACHE_NAME = "moneyflow-v168";
+const CACHE_NAME = "moneyflow-v169";
 const SHARED_RECEIPTS_DB = "moneyflow-shared-receipts-v1";
 const SHARED_RECEIPTS_STORE = "receipts";
 const ASSETS = [
   "./",
   "./index.html",
-  "./styles.css?v=168",
-  "./vendor/jsqr/jsQR.js?v=168",
-  "./app.js?v=168",
+  "./styles.css?v=169",
+  "./vendor/jsqr/jsQR.js?v=169",
+  "./app.js?v=169",
   "./modules/receipt-parser.js",
   "./modules/receipt-scanner.js",
   "./modules/dates.js",
@@ -29,7 +29,7 @@ const ASSETS = [
   "./modules/data-actions-controller.js",
   "./modules/cloud-controller.js",
   "./modules/reader-access-controller.js",
-  "./manifest.webmanifest?v=168",
+  "./manifest.webmanifest?v=169",
   "./icons/moneyflow.svg",
   "./vendor/pdfjs/pdf.min.mjs",
   "./vendor/pdfjs/pdf.worker.min.mjs",
@@ -37,17 +37,13 @@ const ASSETS = [
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then(async (cache) => {
-      for (const item of ASSETS) {
-        const request = new Request(new URL(item, self.registration.scope), { cache: "reload" });
-        try {
-          await cache.add(request);
-        } catch {
-          const cached = await caches.match(request, { ignoreSearch: true });
-          if (cached) await cache.put(request, cached);
-        }
-      }
-    })
+    caches.open(CACHE_NAME).then((cache) =>
+      cache.addAll(
+        ASSETS.map((item) =>
+          new Request(new URL(item, self.registration.scope), { cache: "reload" }),
+        ),
+      ),
+    )
   );
   self.skipWaiting();
 });
