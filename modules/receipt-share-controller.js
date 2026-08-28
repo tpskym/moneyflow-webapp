@@ -294,6 +294,9 @@ export function createReceiptShareController(context) {
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible") scheduleReceive();
     });
+    window.setInterval(() => {
+      if (document.visibilityState === "visible") receiveFromShareTarget();
+    }, 2500);
   }
   return { bind, onQueueClick, receiveFromShareTarget, renderQueue };
 }

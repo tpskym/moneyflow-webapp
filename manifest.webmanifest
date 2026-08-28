@@ -7,9 +7,6 @@
   "background_color": "transparent",
   "theme_color": "#020617",
   "scope": "./",
-  "launch_handler": {
-    "client_mode": "navigate-new"
-  },
   "share_target": {
     "action": "./receive-check/",
     "method": "POST",
