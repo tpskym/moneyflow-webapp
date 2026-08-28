@@ -93,6 +93,67 @@ export async function detectQrsFromSource(source, detector = createQrDetector())
   )];
 }
 
+export async function detectQrsFromCanvasRegions(
+  source,
+  detector = createQrDetector(),
+  { createCanvas = defaultCreateCanvas } = {},
+) {
+  const values = await detectQrsFromSource(source, detector);
+  const width = Math.floor(Number(source?.width || source?.naturalWidth || 0));
+  const height = Math.floor(Number(source?.height || source?.naturalHeight || 0));
+  if (!width || !height) return values;
+
+  for (const region of createCanvasScanRegions(width, height)) {
+    const tile = createCanvas(region.width, region.height);
+    const context = tile?.getContext?.("2d", { willReadFrequently: true });
+    if (!context) continue;
+    context.drawImage(
+      source,
+      region.x,
+      region.y,
+      region.width,
+      region.height,
+      0,
+      0,
+      region.width,
+      region.height,
+    );
+    try {
+      values.push(...await detectQrsFromSource(tile, detector));
+    } catch {
+      // A failed tile must not discard QR codes found in other page regions.
+    }
+  }
+  return [...new Set(values)];
+}
+
+function createCanvasScanRegions(width, height) {
+  const regions = [];
+  const addGrid = (rows, columns) => {
+    const cellWidth = width / columns;
+    const cellHeight = height / rows;
+    const overlapX = cellWidth * 0.12;
+    const overlapY = cellHeight * 0.12;
+    for (let row = 0; row < rows; row += 1) {
+      for (let column = 0; column < columns; column += 1) {
+        const left = Math.max(0, column * cellWidth - overlapX);
+        const top = Math.max(0, row * cellHeight - overlapY);
+        const right = Math.min(width, (column + 1) * cellWidth + overlapX);
+        const bottom = Math.min(height, (row + 1) * cellHeight + overlapY);
+        regions.push({
+          x: Math.floor(left),
+          y: Math.floor(top),
+          width: Math.ceil(right - left),
+          height: Math.ceil(bottom - top),
+        });
+      }
+    }
+  };
+  addGrid(3, 1);
+  addGrid(2, 2);
+  return regions;
+}
+
 export function combineReceiptQrs(rawValues) {
   const receipts = new Map();
   for (const rawValue of rawValues || []) {
@@ -161,16 +222,16 @@ async function decodeQrFromReceiptPdf(file) {
     const rawValues = [];
     for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
       const page = await pdf.getPage(pageNumber);
-      const baseViewport = page.getViewport({ scale: 2.5 });
-      const scale = Math.min(1, 2400 / Math.max(baseViewport.width, baseViewport.height));
-      const viewport = page.getViewport({ scale: 2.5 * scale });
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.ceil(viewport.width);
-      canvas.height = Math.ceil(viewport.height);
-      const context = canvas.getContext("2d", { alpha: false });
-      if (!context) throw new Error("не удалось подготовить страницу PDF");
-      await page.render({ canvasContext: context, viewport }).promise;
-      const pageValues = await detectQrsFromSource(canvas, detector);
+      let canvas = await renderPdfPage(page, 3.2, 3200);
+      let pageValues = await detectQrsFromCanvasRegions(canvas, detector);
+      if (!pageValues.length) {
+        canvas.width = 1;
+        canvas.height = 1;
+        canvas = await renderPdfPage(page, 4.5, 4200);
+        pageValues = await detectQrsFromCanvasRegions(canvas, detector);
+      }
+      canvas.width = 1;
+      canvas.height = 1;
       page.cleanup();
       rawValues.push(...pageValues);
     }
@@ -180,6 +241,22 @@ async function decodeQrFromReceiptPdf(file) {
   } finally {
     await loadingTask.destroy();
   }
+}
+
+async function renderPdfPage(page, preferredScale, maxDimension) {
+  const baseViewport = page.getViewport({ scale: preferredScale });
+  const scale = Math.min(
+    1,
+    maxDimension / Math.max(baseViewport.width, baseViewport.height),
+  );
+  const viewport = page.getViewport({ scale: preferredScale * scale });
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.ceil(viewport.width);
+  canvas.height = Math.ceil(viewport.height);
+  const context = canvas.getContext("2d", { alpha: false });
+  if (!context) throw new Error("не удалось подготовить страницу PDF");
+  await page.render({ canvasContext: context, viewport }).promise;
+  return canvas;
 }
 
 function getPdfJsLibrary() {

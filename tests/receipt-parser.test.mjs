@@ -3,9 +3,33 @@ import test from "node:test";
 
 import {
   combineReceiptQrs,
+  detectQrsFromCanvasRegions,
   parseReceiptQr,
   parseReceiptQrDate,
 } from "../modules/receipt-parser.js";
+
+test("находит несколько QR в разных областях одной страницы PDF", async () => {
+  const source = { width: 1200, height: 1800 };
+  let tileIndex = 0;
+  const detector = {
+    async detect(image) {
+      if (image === source) return [{ rawValue: "receipt-1" }];
+      if (image.tileIndex === 2) return [{ rawValue: "receipt-2" }];
+      if (image.tileIndex === 6) return [{ rawValue: "receipt-3" }];
+      return [];
+    },
+  };
+  const createCanvas = (width, height) => ({
+    width,
+    height,
+    tileIndex: ++tileIndex,
+    getContext: () => ({ drawImage() {} }),
+  });
+
+  const values = await detectQrsFromCanvasRegions(source, detector, { createCanvas });
+
+  assert.deepEqual(values, ["receipt-1", "receipt-2", "receipt-3"]);
+});
 
 test("суммирует все уникальные чеки из PDF и берёт последнюю дату", () => {
   const first = "t=20260820T120000&s=100.25&fn=10&i=1";

@@ -1,12 +1,12 @@
-const CACHE_NAME = "moneyflow-v176";
+const CACHE_NAME = "moneyflow-v177";
 const SHARED_RECEIPTS_DB = "moneyflow-shared-receipts-v1";
 const SHARED_RECEIPTS_STORE = "receipts";
 const ASSETS = [
   "./",
   "./index.html",
-  "./styles.css?v=176",
-  "./vendor/jsqr/jsQR.js?v=176",
-  "./app.js?v=176",
+  "./styles.css?v=177",
+  "./vendor/jsqr/jsQR.js?v=177",
+  "./app.js?v=177",
   "./modules/receipt-parser.js",
   "./modules/receipt-scanner.js",
   "./modules/dates.js",
@@ -29,7 +29,7 @@ const ASSETS = [
   "./modules/data-actions-controller.js",
   "./modules/cloud-controller.js",
   "./modules/reader-access-controller.js",
-  "./manifest.webmanifest?v=176",
+  "./manifest.webmanifest?v=177",
   "./icons/moneyflow.svg",
   "./vendor/pdfjs/pdf.min.mjs",
   "./vendor/pdfjs/pdf.worker.min.mjs",
@@ -65,7 +65,13 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   if (isReceiptShareRequest(event.request)) {
-    event.respondWith(handleReceiptShare(event.request));
+    const response = handleReceiptShare(event.request);
+    event.respondWith(response);
+    event.waitUntil(
+      response
+        .then(() => focusReceiptAppClient(event.resultingClientId))
+        .catch(() => {}),
+    );
     return;
   }
   if (event.request.method !== "GET") return;
@@ -137,6 +143,33 @@ async function handleReceiptShare(request) {
 async function notifySharedReceiptsAvailable() {
   const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
   clients.forEach((client) => client.postMessage({ type: "moneyflow:shared-receipts-ready" }));
+}
+
+async function focusReceiptAppClient(resultingClientId) {
+  await new Promise((resolve) => setTimeout(resolve, 600));
+  const scope = new URL(self.registration.scope);
+  const clients = await self.clients.matchAll({
+    type: "window",
+    includeUncontrolled: true,
+  });
+  const appClients = clients.filter((client) => {
+    try {
+      return new URL(client.url).href.startsWith(scope.href);
+    } catch {
+      return false;
+    }
+  });
+  const target =
+    appClients.find((client) => client.id !== resultingClientId) ||
+    appClients.find((client) => client.id === resultingClientId) ||
+    appClients[0];
+  if (!target) return;
+  target.postMessage({ type: "moneyflow:shared-receipts-ready" });
+  try {
+    await target.focus?.();
+  } catch {
+    // The redirect still opens the app when Android does not allow explicit focus.
+  }
 }
 
 async function saveSharedReceipts(files) {
