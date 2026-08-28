@@ -6,3 +6,9 @@ test("читатель не может выгружать, а редактор �
   assert.equal(getCloudAccessState({ googleClientId: "id", googleFileId: "file", accessMode: "reader" }).canUpload, false);
   assert.equal(getCloudAccessState({ googleClientId: "id", googleFileId: "file", accessMode: "writer" }).canUpload, true);
 });
+
+test("неопределённый режим разрешает добавление до подтверждения читателя", () => {
+  assert.equal(getCloudAccessState({ googleFileId: "file", accessMode: "unknown" }).canEdit, true);
+  assert.equal(getCloudAccessState({ googleFileId: "file", accessMode: "writer" }).canEdit, true);
+  assert.equal(getCloudAccessState({ googleFileId: "file", accessMode: "reader" }).canEdit, false);
+});

@@ -4,7 +4,8 @@ export function getCloudAccessState(settings) {
   const isReadOnly = hasFileId && settings.accessMode === "reader";
   const isWriter = hasFileId && settings.accessMode === "writer";
   const isNotWriter = hasFileId && !isWriter;
-  return { hasClientId, hasFileId, isReadOnly, isWriter, isNotWriter, canUpload: hasClientId && (!hasFileId || !isNotWriter), canSync: hasClientId };
+  const canEdit = !isReadOnly;
+  return { hasClientId, hasFileId, isReadOnly, isWriter, isNotWriter, canEdit, canUpload: hasClientId && (!hasFileId || !isNotWriter), canSync: hasClientId };
 }
 
 export function createSyncSettingsView({ state, elements, getReaderConnectionLink, onCloseQuickAdd }) {
@@ -48,7 +49,7 @@ export function createSyncSettingsView({ state, elements, getReaderConnectionLin
       elements.cloudDownloadButton.hidden = !access.canSync;
       elements.cloudDownloadButton.textContent = access.isReadOnly ? "Синхронизировать" : "Загрузить из облака";
     }
-    if (elements.quickAddToggleButton) elements.quickAddToggleButton.hidden = access.isNotWriter;
+    if (elements.quickAddToggleButton) elements.quickAddToggleButton.hidden = !access.canEdit;
     if (elements.syncGoogleClientIdField) elements.syncGoogleClientIdField.hidden = access.hasFileId;
     if (elements.readerInvite) elements.readerInvite.hidden = !(access.hasClientId && access.hasFileId && access.isWriter);
     if (elements.readerConnection) elements.readerConnection.hidden = !(access.hasClientId && access.hasFileId && access.isWriter);
@@ -57,7 +58,7 @@ export function createSyncSettingsView({ state, elements, getReaderConnectionLin
     const actions = elements.cloudDownloadTopButton?.closest(".sync-actions");
     actions?.classList.toggle("is-readonly", access.isReadOnly);
     actions?.classList.toggle("has-single-cloud-action", (access.canUpload ? 1 : 0) + (access.isReadOnly ? 1 : 0) === 1);
-    if (access.isNotWriter) onCloseQuickAdd();
+    if (!access.canEdit) onCloseQuickAdd();
   }
   function updateInstructionsVisibility(open) {
     if (!elements.instructionsCard || !elements.instructionsToggleButton) return;
