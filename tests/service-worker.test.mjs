@@ -60,5 +60,5 @@ test("Share Target использует отдельный POST endpoint", async
     new Request("https://example.test/moneyflow/app.js?v=186"),
   );
   assert.equal(await cachedResponse.text(), "cached");
-  assert.equal(openedCache, "moneyflow-v186");
+  assert.equal(openedCache, "moneyflow-v187");
 });

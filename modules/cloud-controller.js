@@ -18,6 +18,19 @@ import {
 import { sanitizeCategories } from "./category-core.js";
 import { sanitizeOperations } from "./operation-core.js";
 
+export function shouldConfirmCloudReplacement({
+  skipReplaceConfirmation = false,
+  accessMode = "",
+  operationCount = 0,
+  categoryCount = 0,
+} = {}) {
+  return (
+    !skipReplaceConfirmation &&
+    accessMode !== "reader" &&
+    (operationCount > 0 || categoryCount > 0)
+  );
+}
+
 export function createCloudController(context, { createId }) {
   const { elements, state, storage, actions } = context;
   const call = (name, ...args) => actions.call(name, ...args);
@@ -187,8 +200,12 @@ export function createCloudController(context, { createId }) {
         call("updateCloudAccessUI");
       }
       if (
-        !skipReplaceConfirmation &&
-        (state.operations.length || state.categories.length) &&
+        shouldConfirmCloudReplacement({
+          skipReplaceConfirmation,
+          accessMode: state.syncSettings.accessMode,
+          operationCount: state.operations.length,
+          categoryCount: state.categories.length,
+        }) &&
         !window.confirm(
           "Загрузка из облака полностью заменит локальные операции и категории. Продолжить?",
         )
