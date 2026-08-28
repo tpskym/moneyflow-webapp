@@ -1,11 +1,11 @@
-const CACHE_NAME = "moneyflow-v154";
+const CACHE_NAME = "moneyflow-v155";
 const SHARED_RECEIPTS_DB = "moneyflow-shared-receipts-v1";
 const SHARED_RECEIPTS_STORE = "receipts";
 const ASSETS = [
   "./",
   "./index.html",
-  "./styles.css?v=154",
-  "./app.js?v=154",
+  "./styles.css?v=155",
+  "./app.js?v=155",
   "./modules/receipt-parser.js",
   "./modules/receipt-scanner.js",
   "./modules/dates.js",
@@ -28,7 +28,7 @@ const ASSETS = [
   "./modules/data-actions-controller.js",
   "./modules/cloud-controller.js",
   "./modules/reader-access-controller.js",
-  "./manifest.webmanifest?v=154",
+  "./manifest.webmanifest?v=155",
   "./icons/moneyflow.svg",
   "./vendor/pdfjs/pdf.min.mjs",
   "./vendor/pdfjs/pdf.worker.min.mjs",
@@ -222,4 +222,5 @@ function fetchAndCache(request) {
     })
     .catch(() => caches.match(request, { ignoreSearch: true }).then((cached) => cached || caches.match("./index.html")));
 }
+
 

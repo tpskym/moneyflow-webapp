@@ -27,12 +27,12 @@ export function sanitizeOperations(operations) {
   if (!Array.isArray(operations)) return [];
   const ids = new Set();
   return operations.reduce((result, source) => {
-    const id = String(source?.id || "").trim();
-    const type = String(source?.type || "");
-    const amount = round2(Math.abs(Number(source?.amount)));
+    const id = String(source?.id || "").trim() || getUuid();
+    const type = String(source?.type || "").trim().toLowerCase();
+    const amount = round2(Math.abs(Number(source?.amount) || 0));
     const categoryId = String(source?.categoryId || "").trim();
     const operationDate = getOperationDateValue(source);
-    if (ids.has(id) || !id || !["income", "expense"].includes(type) || !amount || !categoryId || !operationDate) return result;
+    if (ids.has(id) || !["income", "expense"].includes(type) || !categoryId || !operationDate) return result;
     ids.add(id);
     result.push({
       ...source,

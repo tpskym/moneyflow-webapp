@@ -161,13 +161,16 @@ test("слияние не заменяет локальные записи и и
   );
 });
 
-test("санитизация исключает некорректные и повторяющиеся операции", () => {
+test("санитизация сохраняет старые операции без ID и исключает некорректные", () => {
   const result = sanitizeOperations([
     { id: "valid", type: "expense", amount: -12.345, categoryId: "food", operationDate: "2026-08-03", description: "  рынок  " },
     { id: "valid", type: "income", amount: 99, categoryId: "salary", operationDate: "2026-08-04" },
-    { id: "zero", type: "income", amount: 0, categoryId: "salary", operationDate: "2026-08-04" },
+    { type: "INCOME", amount: 0, categoryId: "salary", operationDate: "2026-08-04" },
     { id: "missing-category", type: "income", amount: 10, operationDate: "2026-08-04" },
   ]);
 
-  assert.deepEqual(result, [{ id: "valid", type: "expense", amount: 12.35, categoryId: "food", operationDate: "2026-08-03", description: "рынок", createdAt: "", localAddedAt: "" }]);
+  assert.equal(result.length, 2);
+  assert.deepEqual(result[0], { id: "valid", type: "expense", amount: 12.35, categoryId: "food", operationDate: "2026-08-03", description: "рынок", createdAt: "", localAddedAt: "" });
+  assert.ok(result[1].id);
+  assert.equal(result[1].type, "income");
 });
