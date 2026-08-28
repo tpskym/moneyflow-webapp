@@ -2,7 +2,7 @@ import { readdir, readFile } from "node:fs/promises";
 import { join, relative } from "node:path";
 
 const root = process.cwd();
-const appLimit = 3691;
+const appLimit = 2824;
 const moduleLimit = 400;
 
 async function collectJavaScriptFiles(directory) {

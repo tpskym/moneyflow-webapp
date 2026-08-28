@@ -5,6 +5,25 @@ import {
   parseReceiptQr as parseReceiptQrFromValue,
 } from "./modules/receipt-parser.js";
 import { createReceiptScanner } from "./modules/receipt-scanner.js";
+import {
+  dateToDateOnlyString,
+  getOperationDateValue,
+  getTodayDate,
+  getTodayInputDate,
+  isValidTimestamp,
+  normalizeDateForInput,
+  operationDateOnlyString,
+  parseDateFromInput,
+  parseDateFromValue,
+  parseDateToDateOnlyString,
+  parseOperationDate,
+} from "./modules/dates.js";
+import { escapeCsvCell, formatCsvOperationDate, parseDebitCreditCsv } from "./modules/csv-transfer.js";
+import { compareOperationsChronologicalAscending, compareOperationsChronologicalDescending, enrichOperationsWithBalance, formatAmountForCancellation, formatDate, formatMoney, formatOperationDate, formatOperationDateTime, getDisplayOperationId, getFilteredOperations, getOperationYear, getOperationsByYear, getUuid, mergeOperations, normalizeAmountForSearch, normalizeTextForSearch, prepareOperationsForSync, prepareRemoteOperationForSync, round2, signedAmount } from "./modules/operation-core.js";
+import { createCategoryId as getCategoryId, findCategoryByNormalizedName, getAllCategoriesSorted, getMatchedCategories, mergeCategories, normalizeHexColor, pickCategoryColor, sanitizeCategories } from "./modules/category-core.js";
+import { base64ToBytes, bytesToBase64, createEncryptionSalt, decryptCloudPayload as decryptCloudPayloadValue, deriveEncryptionKey, encryptCloudPayload as encryptCloudPayloadValue, isExpectedKdf, isValidEncryptionKey } from "./modules/cloud-crypto.js";
+import { createReaderPermission, deleteReaderPermission as deleteDriveReaderPermission, downloadDriveData, findLatestDriveFile, getDriveAccessMode, getGoogleAccountEmail, listReaderPermissions, requestGoogleAccessToken, uploadDriveData } from "./modules/google-drive-api.js";
+import { createReaderConnectionLink, getMissingSyncSettings, parseReaderConnectionLink, sanitizeSyncSettings } from "./modules/sync-model.js";
 
 (() => {
   const STORAGE_KEYS = {
@@ -20,10 +39,6 @@ import { createReceiptScanner } from "./modules/receipt-scanner.js";
 
   const DEFAULT_CATEGORIES = [];
 
-  const PASSWORD_CIPHER_PREFIX = "moneyflow-aes-gcm-v1:";
-  const PASSWORD_CRYPTO_DB = "moneyflow-security-v1";
-  const PASSWORD_CRYPTO_STORE = "keys";
-  const PASSWORD_CRYPTO_KEY_ID = "webdav-password";
   const CATEGORY_COLORS = [
     "#EF4444", "#F97316", "#EAB308", "#84CC16", "#22C55E", "#14B8A6",
     "#06B6D4", "#0EA5E9", "#3B82F6", "#6366F1", "#8B5CF6", "#EC4899",
@@ -257,7 +272,7 @@ import { createReceiptScanner } from "./modules/receipt-scanner.js";
     const isLocalHost = ["localhost", "127.0.0.1", "::1"].includes(location.hostname);
     if (isLocalHost) return;
     if (!("serviceWorker" in navigator)) return;
-    navigator.serviceWorker.register("sw.js?v=149").then((registration) => registration.update()).catch(() => {});
+    navigator.serviceWorker.register("sw.js?v=151").then((registration) => registration.update()).catch(() => {});
   }
 
   async function receiveSharedReceiptsFromShareTarget() {
@@ -850,7 +865,7 @@ import { createReceiptScanner } from "./modules/receipt-scanner.js";
 
   function exportToCsvFile() {
     const headers = ["Дата", "Описание", "Категория", "Контрагент", "Заметки", "Счет", "Счет-получатель перевода", "Сумма", "Баланс"];
-    const rows = enrichOperationsWithBalance(state.operations)
+    const rows = enrichOperationsWithBalance(state.operations, getCategoryName)
       .sort((left, right) => compareOperationsChronologicalDescending(left, right))
       .map((operation) => [
         formatCsvOperationDate(operation),
@@ -912,106 +927,6 @@ import { createReceiptScanner } from "./modules/receipt-scanner.js";
     }
   }
 
-  function parseDebitCreditCsv(text) {
-    const rows = parseCsvRows(text);
-    if (rows.length < 2) throw new Error("CSV-файл пустой.");
-    const headers = rows[0].map((item) => String(item || "").replace(/^\uFEFF/, "").trim());
-    if (["Дата", "Категория", "Сумма"].some((header) => !headers.includes(header))) {
-      throw new Error("Нужен формат Debit and Credit с колонками Дата, Категория и Сумма.");
-    }
-    const categories = new Map();
-    const operations = [];
-    rows.slice(1).forEach((cells, index) => {
-      const row = Object.fromEntries(headers.map((header, column) => [header, String(cells[column] || "").trim()]));
-      const operationDate = parseCsvOperationDate(row["Дата"]);
-      const categoryName = row["Категория"];
-      const amount = Number(String(row["Сумма"] || "").replace(/\s/g, "").replace(",", "."));
-      if (!operationDate || !categoryName || !Number.isFinite(amount) || amount === 0) return;
-      const categoryKey = normalizeTextForSearch(categoryName);
-      if (!categories.has(categoryKey)) {
-        const colorIndex = categories.size;
-        categories.set(categoryKey, {
-          id: createFileId("category", colorIndex),
-          name: categoryName,
-          mode: "both",
-          color: ["#0EA5E9", "#22C55E", "#F97316", "#EC4899", "#8B5CF6", "#EAB308", "#14B8A6", "#EF4444"][colorIndex % 8],
-        });
-      }
-      const notes = String(row["Заметки"] || "").trim();
-      const counterparty = String(row["Контрагент"] || "").trim();
-      const sourceDescription = String(row["Описание"] || "").trim();
-      const description = [counterparty, notes, sourceDescription !== "---" ? sourceDescription : ""].filter(Boolean).join(" · ");
-      const timestamp = parseCsvTimestamp(row["Дата"], index);
-      operations.push({
-        id: createFileId("operation", index),
-        createdAt: timestamp.toISOString(),
-        localAddedAt: timestamp.toISOString(),
-        operationDate,
-        type: amount > 0 ? "income" : "expense",
-        amount: round2(Math.abs(amount)),
-        categoryId: categories.get(categoryKey).id,
-        description,
-      });
-    });
-    return { operations, categories: [...categories.values()] };
-  }
-
-  function parseCsvRows(text) {
-    const rows = [];
-    let row = [];
-    let cell = "";
-    let quoted = false;
-    const source = String(text || "");
-    for (let index = 0; index < source.length; index += 1) {
-      const character = source[index];
-      if (character === '"') {
-        if (quoted && source[index + 1] === '"') {
-          cell += '"';
-          index += 1;
-        } else quoted = !quoted;
-      } else if (character === "," && !quoted) {
-        row.push(cell);
-        cell = "";
-      } else if (character === "\n" && !quoted) {
-        row.push(cell.replace(/\r$/, ""));
-        rows.push(row);
-        row = [];
-        cell = "";
-      } else cell += character;
-    }
-    if (cell.length || row.length) {
-      row.push(cell.replace(/\r$/, ""));
-      rows.push(row);
-    }
-    return rows.filter((line) => line.some((value) => String(value).trim()));
-  }
-
-  function parseCsvOperationDate(value) {
-    const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if (match) return `${match[1]}-${match[2]}-${match[3]}`;
-    const parsed = parseDateFromValue(value);
-    if (Number.isNaN(parsed.getTime())) return "";
-    return `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, "0")}-${String(parsed.getDate()).padStart(2, "0")}`;
-  }
-
-  function parseCsvTimestamp(value, index) {
-    const timestamp = new Date(String(value || "").trim().replace(" ", "T"));
-    return Number.isNaN(timestamp.getTime()) ? new Date(Date.now() + index) : new Date(timestamp.getTime() + index);
-  }
-
-  function createFileId(prefix, index) {
-    return globalThis.crypto?.randomUUID?.() || `${prefix}-${Date.now().toString(36)}-${index}-${Math.random().toString(36).slice(2, 10)}`;
-  }
-
-  function formatCsvOperationDate(operation) {
-    const date = parseDateFromValue(getOperationDateValue(operation));
-    if (Number.isNaN(date.getTime())) return "";
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")} 12:00:00`;
-  }
-
-  function escapeCsvCell(value) {
-    return `"${String(value ?? "").replace(/"/g, '""')}"`;
-  }
   async function onCloudUpload() {
     if (cloudActionInProgress) return;
     cloudActionInProgress = true;
@@ -1029,7 +944,7 @@ import { createReceiptScanner } from "./modules/receipt-scanner.js";
         setSyncStatus("Это устройство настроено только для чтения. Выгрузка недоступна.");
         return;
       }
-      const missingSyncSettings = getMissingSyncSettings();
+      const missingSyncSettings = getMissingSyncSettings(state.syncSettings);
       if (missingSyncSettings.length > 0) {
         updateSyncSettingsVisibility(true);
         setSyncStatus(`Выгрузка не выполнена: заполните ${missingSyncSettings.join(", ")}.`);
@@ -1056,7 +971,7 @@ import { createReceiptScanner } from "./modules/receipt-scanner.js";
         updateSyncSettingsVisibility(true);
         return;
       }
-      const missingSyncSettings = getMissingSyncSettings();
+      const missingSyncSettings = getMissingSyncSettings(state.syncSettings);
       if (missingSyncSettings.length > 0) {
         updateSyncSettingsVisibility(true);
         setSyncStatus(`Загрузка не выполнена: заполните ${missingSyncSettings.join(", ")}.`);
@@ -1503,7 +1418,7 @@ import { createReceiptScanner } from "./modules/receipt-scanner.js";
     if (fallbackCategory) {
       setCategorySelection(fallbackCategory.id);
     } else {
-      const firstCategory = getAllCategoriesSorted()[0];
+      const firstCategory = getAllCategoriesSorted(state.categories)[0];
       if (firstCategory) {
         setCategorySelection(firstCategory.id);
       }
@@ -1615,12 +1530,6 @@ import { createReceiptScanner } from "./modules/receipt-scanner.js";
     }
   }
 
-  function normalizeDateForInput(dateValue) {
-    const date = parseDateFromValue(dateValue);
-    if (Number.isNaN(date.getTime())) return getTodayInputDate();
-    return `${String(date.getDate()).padStart(2, "0")}.${String(date.getMonth() + 1).padStart(2, "0")}.${date.getFullYear()}`;
-  }
-
   function onOperationDateInput(event) {
     if (!event?.target) return;
 
@@ -1674,231 +1583,11 @@ import { createReceiptScanner } from "./modules/receipt-scanner.js";
     }
   }
 
-  function getTodayInputDate() {
-    return normalizeDateForInput(getTodayDate());
-  }
-
-  function parseOperationDate(value) {
-    const date = parseDateFromInput(value);
-    if (Number.isNaN(date.getTime())) {
-      return getTodayDate();
-    }
-    return date;
-  }
-
-  function parseDateFromInput(value) {
-    if (!value) return getTodayDate();
-
-    const normalized = String(value)
-      .trim()
-      .replace(/\//g, ".");
-
-    if (/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
-      const [year, month, day] = normalized.split("-").map((part) => Number(part));
-      const parsed = new Date(year, month - 1, day);
-      if (!Number.isNaN(parsed.getTime()) && `${String(parsed.getDate()).padStart(2, "0")}.${String(parsed.getMonth() + 1).padStart(2, "0")}.${parsed.getFullYear()}` === normalized.split("-").reverse().join(".")) {
-        return parsed;
-      }
-    }
-
-    if (/^\d{2}\.\d{2}\.\d{4}$/.test(normalized)) {
-      const [day, month, year] = normalized.split(".").map((part) => Number(part));
-      const parsed = new Date(year, month - 1, day);
-      if (!Number.isNaN(parsed.getTime()) && `${String(parsed.getDate()).padStart(2, "0")}.${String(parsed.getMonth() + 1).padStart(2, "0")}.${parsed.getFullYear()}` === normalized) {
-        return parsed;
-      }
-    }
-
-    const digits = normalized.replace(/\D/g, "");
-    if (digits.length === 8) {
-      const day = Number(digits.slice(0, 2));
-      const month = Number(digits.slice(2, 4));
-      const year = Number(digits.slice(4, 8));
-      const parsed = new Date(year, month - 1, day);
-      if (!Number.isNaN(parsed.getTime()) && parsed.getDate() === day && parsed.getMonth() === month - 1 && parsed.getFullYear() === year) {
-        return parsed;
-      }
-    }
-
-    return getTodayDate();
-  }
-
-  function getTodayDate() {
-    const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  }
-
-  function dateToDateOnlyString(date) {
-    return parseDateToDateOnlyString(date);
-  }
-
-  function parseDateToDateOnlyString(dateValue) {
-    const date = parseDateFromValue(dateValue);
-    if (Number.isNaN(date.getTime())) return "";
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-  }
-
-  function operationDateOnlyString(dateValue) {
-    return parseDateToDateOnlyString(dateValue);
-  }
-
-  function parseDateFromValue(value) {
-    if (!value) return new Date(NaN);
-    if (typeof value === "number") {
-      const direct = new Date(value);
-      if (!Number.isNaN(direct.getTime())) return direct;
-      return new Date(NaN);
-    }
-
-    if (value instanceof Date) {
-      return Number.isNaN(value.getTime()) ? new Date(NaN) : value;
-    }
-
-    if (typeof value !== "string") {
-      return new Date(NaN);
-    }
-
-    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-      const [year, month, day] = value.split("-").map((part) => Number(part));
-      const parsed = new Date(year, month - 1, day);
-      if (!Number.isNaN(parsed.getTime())) return parsed;
-    }
-
-    if (/^\d{2}\.\d{2}\.\d{4}$/.test(value)) {
-      const [day, month, year] = value.split(".").map((part) => Number(part));
-      const parsed = new Date(year, month - 1, day);
-      if (!Number.isNaN(parsed.getTime())) return parsed;
-    }
-
-    const direct = new Date(value);
-    return Number.isNaN(direct.getTime()) ? new Date(NaN) : direct;
-  }
-
-  function isValidTimestamp(value) {
-    return Number.isFinite(parseDateFromValue(value).getTime());
-  }
-
-  function getDisplayOperationId(operationId) {
-    const normalized = String(operationId || "").trim();
-    if (!normalized) return "";
-    if (normalized.length <= 10) {
-      return normalized;
-    }
-    return `${normalized.slice(0, 5)}…${normalized.slice(-4)}`;
-  }
-
-  function getSyncCreatedAtBase(syncStartedAt) {
-    const syncStartedTimestamp = parseDateFromValue(syncStartedAt).getTime();
-    const baseTimestamp = Number.isFinite(syncStartedTimestamp)
-      ? syncStartedTimestamp
-      : Date.now();
-    return baseTimestamp + SYNC_CREATED_AT_OFFSET_MS;
-  }
-
-  function prepareOperationsForSync(operations, syncStartedAt) {
-    const baseTimestamp = getSyncCreatedAtBase(syncStartedAt);
-    let cursor = 0;
-    let changed = false;
-
-    const updated = Array.isArray(operations)
-      ? operations.map((operation) => {
-          if (!operation || typeof operation !== "object") return operation;
-
-          const isCreatedAtMissing = !isValidTimestamp(operation.createdAt);
-          const isIdMissing = !String(operation.id || "").trim();
-          if (!isIdMissing && !isCreatedAtMissing) {
-            return operation;
-          }
-
-          changed = true;
-          const nextCreatedAt = isCreatedAtMissing ? new Date(baseTimestamp + cursor).toISOString() : operation.createdAt;
-          if (isCreatedAtMissing) {
-            cursor += 1;
-          }
-
-          return {
-            ...operation,
-            id: isIdMissing ? getUuid() : operation.id,
-            createdAt: isCreatedAtMissing ? nextCreatedAt : operation.createdAt,
-          };
-        })
-      : [];
-
-    return { operations: updated, changed };
-  }
-
-  function prepareRemoteOperationForSync(operation, syncStartedAt, cursor) {
-    if (operation && typeof operation === "object") {
-      if (!isValidTimestamp(operation.createdAt)) {
-        return {
-          ...operation,
-          createdAt: new Date(getSyncCreatedAtBase(syncStartedAt) + cursor).toISOString(),
-        };
-      }
-      return operation;
-    }
-    return operation;
-  }
-
-  function getOperationDateValue(operation) {
-    if (!operation) return "";
-    const byOperationDate = parseDateFromValue(operation.operationDate);
-    if (byOperationDate) {
-      return parseDateToDateOnlyString(byOperationDate);
-    }
-    return parseDateToDateOnlyString(parseDateFromValue(operation.date || operation.createdAt));
-  }
-
-  function getOperationSortDate(operation) {
-    const operationDate = parseDateFromValue(getOperationDateValue(operation));
-    const createdAtDate = parseDateFromValue(operation?.createdAt);
-    return operationDate.getTime();
-  }
-
-  function compareOperationsChronologicalAscending(left, right) {
-    return getOperationSortDate(left) - getOperationSortDate(right) || dateToOrderTiebreak(left, right);
-  }
-
-  function compareOperationsChronologicalDescending(left, right) {
-    return getOperationSortDate(right) - getOperationSortDate(left) || dateToOrderTiebreak(right, left);
-  }
-
-  function dateToOrderTiebreak(left, right) {
-    const leftCreated = getOperationOrderTimestamp(left);
-    const rightCreated = getOperationOrderTimestamp(right);
-    return leftCreated - rightCreated || String(left?.id || "").localeCompare(String(right?.id || ""));
-  }
-
-  function getOperationOrderTimestamp(operation) {
-    const syncCreatedAt = parseDateFromValue(operation?.createdAt).getTime();
-    if (Number.isFinite(syncCreatedAt)) return syncCreatedAt;
-
-    const localAddedAt = parseDateFromValue(operation?.localAddedAt).getTime();
-    return Number.isFinite(localAddedAt) ? localAddedAt : 0;
-  }
-
-  function formatOperationDate(operation) {
-    const operationDate = parseDateFromValue(getOperationDateValue(operation));
-    return operationDate.toLocaleDateString("ru-RU", { day: "2-digit", month: "short", year: "numeric" });
-  }
-
-  function formatOperationDateTime(operation) {
-    const createdAtDate = parseDateFromValue(operation?.createdAt);
-    if (Number.isNaN(createdAtDate.getTime())) return "Ожидает синхронизации";
-    const ms = String(createdAtDate.getMilliseconds()).padStart(3, "0");
-    const time = createdAtDate.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-    return `${createdAtDate.toLocaleDateString("ru-RU", { day: "2-digit", month: "short", year: "numeric" })} ${time}.${ms}`;
-  }
-
-  function formatAmountForCancellation(value) {
-    return Math.abs(round2(Number(value) || 0)).toFixed(2);
-  }
-
   function render() {
     updatePendingCloudChangesUI();
-    const enrichedOps = enrichOperationsWithBalance(state.operations);
-    const yearFiltered = getOperationsByYear(enrichedOps);
-    const filtered = getFilteredOperations(yearFiltered);
+    const enrichedOps = enrichOperationsWithBalance(state.operations, getCategoryName);
+    const yearFiltered = getOperationsByYear(enrichedOps, state);
+    const filtered = getFilteredOperations(yearFiltered, state);
     const visibleOperations = filtered;
     const totalPages = Math.ceil(visibleOperations.length / state.pageSize);
     const safeTotalPages = Math.max(totalPages, 0);
@@ -1915,91 +1604,6 @@ import { createReceiptScanner } from "./modules/receipt-scanner.js";
     renderCategoryOptions();
     renderOperationsList(pageItems);
     updatePager(visibleOperations.length, safeTotalPages);
-  }
-
-  function enrichOperationsWithBalance(operations) {
-    const sorted = [...operations].sort((a, b) => compareOperationsChronologicalAscending(a, b));
-    let runningBalance = 0;
-    const map = new Map();
-
-    for (const operation of sorted) {
-      runningBalance = round2(runningBalance + signedAmount(operation));
-      map.set(operation.id, round2(runningBalance));
-    }
-
-    return operations.map((operation) => ({
-      ...operation,
-      balanceAfter: map.get(operation.id) ?? 0,
-      categoryName: getCategoryName(operation.categoryId),
-    }));
-  }
-
-  function getFilteredOperations(opsWithBalance) {
-    const normalizedQuery = normalizeTextForSearch(state.searchText);
-    const queryAmount = normalizeAmountForSearch(state.searchText);
-
-    const filteredByQuery = opsWithBalance
-      .filter((operation) => {
-        if (!["income", "expense"].includes(operation.type)) return false;
-        if (state.activeCategoryFilter.size && !state.activeCategoryFilter.has(operation.categoryId)) return false;
-
-        if (!normalizedQuery) return true;
-
-        const description = normalizeTextForSearch(operation.description || "");
-        const category = normalizeTextForSearch(operation.categoryName || "");
-        const amountCandidates = [
-          normalizeAmountForSearch(formatMoney(operation.amount)),
-          normalizeAmountForSearch(formatMoney(Math.abs(operation.amount))),
-          normalizeAmountForSearch(operation.amount.toString()),
-          normalizeAmountForSearch(operation.amount.toFixed(2)),
-        ];
-
-        return (
-          `${description} ${category}`.includes(normalizedQuery) ||
-          amountCandidates.some((candidate) => candidate.includes(queryAmount))
-        );
-      })
-      .sort((a, b) => compareOperationsChronologicalDescending(a, b));
-
-    if (state.activeTypeFilter === "all") {
-      return filteredByQuery;
-    }
-
-    return filteredByQuery.filter((operation) => operation.type === state.activeTypeFilter);
-  }
-
-  function getOperationsByYear(operations) {
-    return operations.filter((operation) => matchesOperationPeriod(operation));
-  }
-
-  function matchesOperationPeriod(operation) {
-    const operationDate = parseDateFromValue(getOperationDateValue(operation));
-    if (Number.isNaN(operationDate.getTime())) return false;
-    const year = operationDate.getFullYear();
-    const month = operationDate.getMonth() + 1;
-    const day = operationDate.getDate();
-    if (state.activeYearFilter.size && !state.activeYearFilter.has(year)) return false;
-    if (state.activeYearFilter.size === 1 && state.activeMonthFilter.size && !state.activeMonthFilter.has(month)) return false;
-    if (state.activeYearFilter.size === 1 && state.activeMonthFilter.size === 1 && state.activeDayFilter.size && !state.activeDayFilter.has(day)) return false;
-
-    const normalizedOperationDate = new Date(year, month - 1, day).getTime();
-    const from = getDateBoundary(state.dateFrom, false);
-    const to = getDateBoundary(state.dateTo, true);
-    if (from !== null && normalizedOperationDate < from) return false;
-    if (to !== null && normalizedOperationDate > to) return false;
-    return true;
-  }
-
-  function getDateBoundary(value, endOfDay) {
-    if (!value || !String(value).trim()) return null;
-    const parsed = parseDateFromValue(value);
-    if (Number.isNaN(parsed.getTime())) return null;
-    return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate(), endOfDay ? 23 : 0, endOfDay ? 59 : 0, endOfDay ? 59 : 0, endOfDay ? 999 : 0).getTime();
-  }
-
-  function getOperationYear(operation) {
-    const operationDate = parseDateFromValue(getOperationDateValue(operation));
-    return operationDate.getFullYear();
   }
 
   function renderCategoryFilters() {
@@ -2417,155 +2021,6 @@ import { createReceiptScanner } from "./modules/receipt-scanner.js";
       .join("");
   }
 
-  function getCategoryId(name) {
-    const base = normalizeTextForSearch(name)
-      .replace(/[^a-z0-9\-_ ]/g, "")
-      .replace(/\s+/g, "-")
-      .slice(0, 32);
-    const safeBase = base || "cat";
-    const candidate = `${safeBase}-${Date.now().toString(36)}-${Math.random().toString(16).slice(2, 6)}`;
-    return candidate;
-  }
-
-  function normalizeHexColor(value) {
-    const match = /^#([0-9a-fA-F]{6})$/.test(value || "");
-    if (match) return value.toUpperCase();
-    return "#64748B";
-  }
-
-  function sanitizeCategories(categories) {
-    if (!Array.isArray(categories)) return [...DEFAULT_CATEGORIES];
-    return categories
-      .map((category) => {
-        if (!category || typeof category !== "object") return null;
-        const name = String(category.name || "").trim();
-        const mode = "both";
-        if (!name) return null;
-        return {
-          id: category.id || getCategoryId(name),
-          name,
-          mode,
-          color: normalizeHexColor(category.color || "#64748b"),
-        };
-      })
-      .filter(Boolean);
-  }
-
-  function sanitizeSyncSettings(settings) {
-    return {
-      googleClientId: String((settings && settings.googleClientId) || "").trim(),
-      googleFileId: String((settings && settings.googleFileId) || "").trim(),
-      accessMode: settings && ["writer", "reader", "unknown"].includes(settings.accessMode)
-        ? settings.accessMode
-        : "writer",
-      googleAccountEmail: String((settings && settings.googleAccountEmail) || "").trim(),
-      lastSuccessfulSyncAt: String((settings && settings.lastSuccessfulSyncAt) || "").trim(),
-    };
-  }
-
-  async function restoreSyncSettings(storedSettings) {
-    if (!storedSettings.password) {
-      return { settings: storedSettings, needsEncryption: false };
-    }
-    if (!storedSettings.password.startsWith(PASSWORD_CIPHER_PREFIX)) {
-      return { settings: storedSettings, needsEncryption: true };
-    }
-
-    return {
-      settings: {
-        ...storedSettings,
-        password: await decryptStoredPassword(storedSettings.password),
-      },
-      needsEncryption: false,
-    };
-  }
-
-  async function persistSyncSettings() {
-    writeJson(STORAGE_KEYS.syncSettings, state.syncSettings);
-  }
-
-  async function encryptStoredPassword(password) {
-    const value = String(password || "");
-    if (!value) return "";
-
-    const key = await getPasswordCryptoKey();
-    const iv = crypto.getRandomValues(new Uint8Array(12));
-    const encrypted = await crypto.subtle.encrypt(
-      { name: "AES-GCM", iv },
-      key,
-      new TextEncoder().encode(value),
-    );
-    return `${PASSWORD_CIPHER_PREFIX}${bytesToBase64(iv)}.${bytesToBase64(new Uint8Array(encrypted))}`;
-  }
-
-  async function decryptStoredPassword(payload) {
-    const encoded = String(payload || "").slice(PASSWORD_CIPHER_PREFIX.length);
-    const [ivValue, encryptedValue] = encoded.split(".");
-    if (!ivValue || !encryptedValue) throw new Error("Некорректный формат зашифрованного пароля");
-
-    const key = await getPasswordCryptoKey();
-    const decrypted = await crypto.subtle.decrypt(
-      { name: "AES-GCM", iv: base64ToBytes(ivValue) },
-      key,
-      base64ToBytes(encryptedValue),
-    );
-    return new TextDecoder().decode(decrypted);
-  }
-
-  async function getPasswordCryptoKey() {
-    if (!globalThis.isSecureContext || !globalThis.crypto?.subtle || !globalThis.indexedDB) {
-      throw new Error("Web Crypto недоступен");
-    }
-
-    const database = await openPasswordCryptoDatabase();
-    try {
-      const existingKey = await readPasswordCryptoKey(database);
-      if (existingKey) return existingKey;
-
-      const createdKey = await crypto.subtle.generateKey(
-        { name: "AES-GCM", length: 256 },
-        false,
-        ["encrypt", "decrypt"],
-      );
-      await savePasswordCryptoKey(database, createdKey);
-      return createdKey;
-    } finally {
-      database.close();
-    }
-  }
-
-  function openPasswordCryptoDatabase() {
-    return new Promise((resolve, reject) => {
-      const request = indexedDB.open(PASSWORD_CRYPTO_DB, 1);
-      request.onupgradeneeded = () => {
-        if (!request.result.objectStoreNames.contains(PASSWORD_CRYPTO_STORE)) {
-          request.result.createObjectStore(PASSWORD_CRYPTO_STORE);
-        }
-      };
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    });
-  }
-
-  function readPasswordCryptoKey(database) {
-    return new Promise((resolve, reject) => {
-      const request = database.transaction(PASSWORD_CRYPTO_STORE, "readonly")
-        .objectStore(PASSWORD_CRYPTO_STORE)
-        .get(PASSWORD_CRYPTO_KEY_ID);
-      request.onsuccess = () => resolve(request.result || null);
-      request.onerror = () => reject(request.error);
-    });
-  }
-
-  function savePasswordCryptoKey(database, key) {
-    return new Promise((resolve, reject) => {
-      const transaction = database.transaction(PASSWORD_CRYPTO_STORE, "readwrite");
-      transaction.objectStore(PASSWORD_CRYPTO_STORE).put(key, PASSWORD_CRYPTO_KEY_ID);
-      transaction.oncomplete = () => resolve();
-      transaction.onerror = () => reject(transaction.error);
-    });
-  }
-
   function sanitizeOperations(operations) {
     if (!Array.isArray(operations)) {
       return [];
@@ -2638,66 +2093,38 @@ import { createReceiptScanner } from "./modules/receipt-scanner.js";
     })}`;
   }
 
-  function getMissingSyncSettings({ needsFileId = false } = {}) {
-    const missing = [];
-    if (!state.syncSettings.googleClientId) {
-      missing.push("OAuth Client ID");
-    }
-    if (needsFileId && !state.syncSettings.googleFileId) missing.push("ID файла Google Drive");
-    return missing;
-  }
-
   async function getGoogleAccessToken(scope) {
-    if (!globalThis.google?.accounts?.oauth2) {
-      throw new Error("Сервис авторизации Google ещё загружается. Повторите попытку через несколько секунд.");
-    }
-    return new Promise((resolve, reject) => {
-      const tokenClient = globalThis.google.accounts.oauth2.initTokenClient({
-        client_id: state.syncSettings.googleClientId,
-        scope,
-        login_hint: state.syncSettings.googleAccountEmail || undefined,
-        callback: async (response) => {
-          if (response?.error) {
-            reject(new Error(response.error_description || response.error));
-            return;
-          }
-          await rememberGoogleAccount(response.access_token);
-          resolve(response.access_token);
-        },
-      });
-      tokenClient.requestAccessToken({ prompt: "" });
+    const accessToken = await requestGoogleAccessToken({
+      clientId: state.syncSettings.googleClientId,
+      scope,
+      accountEmail: state.syncSettings.googleAccountEmail,
     });
+    await rememberGoogleAccount(accessToken);
+    return accessToken;
   }
 
   async function rememberGoogleAccount(accessToken) {
     try {
-      const response = await fetch("https://www.googleapis.com/drive/v3/about?fields=user(emailAddress)", {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-      if (!response.ok) return;
-      const payload = await response.json();
-      const email = String(payload?.user?.emailAddress || "").trim();
+      const email = await getGoogleAccountEmail(accessToken);
       if (!email || email === state.syncSettings.googleAccountEmail) return;
       state.syncSettings.googleAccountEmail = email;
       await persistSyncSettings();
     } catch {
-      // Account hint is optional and must not interrupt cloud actions.
+      // The account hint is optional and must not interrupt cloud actions.
     }
   }
 
   function consumeCloudConnectionSettings() {
     const url = new URL(location.href);
-    const googleClientId = url.searchParams.get("mf_google_client") || "";
-    const googleFileId = url.searchParams.get("mf_google_file") || "";
-    const encryptionKey = new URLSearchParams(url.hash.slice(1)).get("mf_key") || "";
-    if (!googleClientId || !googleFileId || !isValidCloudEncryptionKey(encryptionKey)) return null;
-
-    url.searchParams.delete("mf_google_client");
-    url.searchParams.delete("mf_google_file");
-    url.hash = "";
-    window.history.replaceState({}, "", url.toString());
-    return { googleClientId, googleFileId, encryptionKey };
+    const settings = parseReaderConnectionLink(url.toString(), { isValidKey: isValidCloudEncryptionKey });
+    if (!settings) return null;
+    url.searchParams.delete('mf_google_client');
+    url.searchParams.delete('mf_google_file');
+    url.hash = '';
+    window.history.replaceState({}, '', url.toString());
+    return settings;
   }
+
   async function onApplyReaderConnectionLink() {
     const value = (elements.readerLinkInput?.value || "").trim();
     let url;
@@ -2731,12 +2158,14 @@ import { createReceiptScanner } from "./modules/receipt-scanner.js";
   }
 
   function getReaderConnectionLink() {
-    if (!isValidCloudEncryptionKey(state.cloudEncryptionKey)) return "";
-    const url = new URL(location.origin + location.pathname);
-    url.searchParams.set("mf_google_client", state.syncSettings.googleClientId);
-    url.searchParams.set("mf_google_file", state.syncSettings.googleFileId);
-    url.hash = `mf_key=${encodeURIComponent(state.cloudEncryptionKey)}`;
-    return url.toString();
+    if (!isValidCloudEncryptionKey(state.cloudEncryptionKey)) return '';
+    return createReaderConnectionLink({
+      origin: location.origin,
+      pathname: location.pathname,
+      googleClientId: state.syncSettings.googleClientId,
+      googleFileId: state.syncSettings.googleFileId,
+      encryptionKey: state.cloudEncryptionKey,
+    });
   }
 
   function onRefreshReaderConnectionLink() {
@@ -2983,11 +2412,7 @@ import { createReceiptScanner } from "./modules/receipt-scanner.js";
   }
 
   function isValidCloudEncryptionKey(key) {
-    try {
-      return base64ToBytes(String(key || "")).byteLength === 32;
-    } catch {
-      return false;
-    }
+    return isValidEncryptionKey(key);
   }
 
   function setCloudEncryptionKey(key) {
@@ -3006,84 +2431,52 @@ import { createReceiptScanner } from "./modules/receipt-scanner.js";
 
   async function ensureEditorEncryptionKey() {
     if (isValidCloudEncryptionKey(state.cloudEncryptionKey)) return state.cloudEncryptionKey;
-    if (!state.cloudPassphrase) throw new Error("Укажите пароль-фразу шифрования в настройках редактора");
-    if (typeof crypto === "undefined" || !crypto.subtle || !crypto.getRandomValues) throw new Error("Браузер не поддерживает шифрование файла");
+    if (typeof crypto === 'undefined' || !crypto.subtle || !crypto.getRandomValues) throw new Error('Браузер не поддерживает шифрование файла');
     let salt = state.cloudEncryptionSalt;
     if (!salt) {
-      const saltBytes = new Uint8Array(16);
-      crypto.getRandomValues(saltBytes);
-      salt = bytesToBase64(saltBytes);
+      salt = createEncryptionSalt();
       state.cloudEncryptionSalt = salt;
       localStorage.setItem(STORAGE_KEYS.cloudEncryptionSalt, salt);
     }
-    const material = await crypto.subtle.importKey("raw", new TextEncoder().encode(state.cloudPassphrase), "PBKDF2", false, ["deriveKey"]);
-    const derivedKey = await crypto.subtle.deriveKey(
-      { name: "PBKDF2", salt: base64ToBytes(salt), iterations: 600000, hash: "SHA-256" },
-      material,
-      { name: "AES-GCM", length: 256 },
-      true,
-      ["encrypt", "decrypt"],
-    );
-    const key = bytesToBase64(new Uint8Array(await crypto.subtle.exportKey("raw", derivedKey)));
+    const key = await deriveEncryptionKey(state.cloudPassphrase, salt);
     setCloudEncryptionKey(key);
     return key;
   }
 
   async function encryptCloudPayload(payload) {
-    const encryptionKey = await ensureEditorEncryptionKey();
-    const iv = new Uint8Array(12);
-    crypto.getRandomValues(iv);
-    const key = await crypto.subtle.importKey("raw", base64ToBytes(encryptionKey), { name: "AES-GCM" }, false, ["encrypt"]);
-    const encrypted = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, new TextEncoder().encode(JSON.stringify(payload)));
-    return {
-      format: "moneyflow-encrypted-v1",
-      cipher: "AES-256-GCM",
-      kdf: { name: "PBKDF2", hash: "SHA-256", iterations: 600000, salt: state.cloudEncryptionSalt },
-      iv: bytesToBase64(iv),
-      ciphertext: bytesToBase64(new Uint8Array(encrypted)),
-    };
+    return encryptCloudPayloadValue(payload, {
+      encryptionKey: await ensureEditorEncryptionKey(),
+      salt: state.cloudEncryptionSalt,
+    });
   }
 
   async function restoreEditorEncryptionKeyFromCloudFile(encryptedPayload) {
     const kdf = encryptedPayload?.kdf;
-    if (!state.cloudPassphrase || kdf?.name !== "PBKDF2" || kdf?.hash !== "SHA-256" || Number(kdf?.iterations) !== 600000) {
-      return "";
-    }
+    if (!state.cloudPassphrase || !isExpectedKdf(kdf)) return '';
     try {
-      const salt = String(kdf.salt || "");
-      if (base64ToBytes(salt).byteLength !== 16) return "";
-      const material = await crypto.subtle.importKey("raw", new TextEncoder().encode(state.cloudPassphrase), "PBKDF2", false, ["deriveKey"]);
-      const derivedKey = await crypto.subtle.deriveKey(
-        { name: "PBKDF2", salt: base64ToBytes(salt), iterations: 600000, hash: "SHA-256" },
-        material,
-        { name: "AES-GCM", length: 256 },
-        true,
-        ["encrypt", "decrypt"],
-      );
-      const encryptionKey = bytesToBase64(new Uint8Array(await crypto.subtle.exportKey("raw", derivedKey)));
+      const salt = String(kdf.salt || '');
+      if (base64ToBytes(salt).byteLength !== 16) return '';
+      const key = await deriveEncryptionKey(state.cloudPassphrase, salt);
       state.cloudEncryptionSalt = salt;
       localStorage.setItem(STORAGE_KEYS.cloudEncryptionSalt, salt);
-      setCloudEncryptionKey(encryptionKey);
-      return encryptionKey;
+      setCloudEncryptionKey(key);
+      return key;
     } catch {
-      return "";
+      return '';
     }
   }
 
   async function decryptCloudPayload(encryptedPayload) {
     if (Array.isArray(encryptedPayload?.operations) && Array.isArray(encryptedPayload?.categories)) return encryptedPayload;
-    if (encryptedPayload?.format !== "moneyflow-encrypted-v1") throw new Error("Файл не похож на зашифрованные данные MoneyFlow");
-    let encryptionKey = state.cloudEncryptionKey;
-    if (!isValidCloudEncryptionKey(encryptionKey) && state.syncSettings.accessMode !== "reader") {
-      encryptionKey = await restoreEditorEncryptionKeyFromCloudFile(encryptedPayload);
+    let key = state.cloudEncryptionKey;
+    if (!isValidCloudEncryptionKey(key) && state.syncSettings.accessMode !== 'reader') {
+      key = await restoreEditorEncryptionKeyFromCloudFile(encryptedPayload);
     }
-    if (!isValidCloudEncryptionKey(encryptionKey)) throw new Error("В приложении нет ключа. Откройте актуальную ссылку подключения от редактора.");
+    if (!isValidCloudEncryptionKey(key)) throw new Error('В приложении нет ключа. Откройте актуальную ссылку подключения от редактора.');
     try {
-      const key = await crypto.subtle.importKey("raw", base64ToBytes(encryptionKey), { name: "AES-GCM" }, false, ["decrypt"]);
-      const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv: base64ToBytes(encryptedPayload.iv) }, key, base64ToBytes(encryptedPayload.ciphertext));
-      return JSON.parse(new TextDecoder().decode(decrypted));
+      return await decryptCloudPayloadValue(encryptedPayload, key);
     } catch {
-      throw new Error("Не удалось расшифровать файл. Откройте актуальную ссылку подключения от редактора.");
+      throw new Error('Не удалось расшифровать файл. Откройте актуальную ссылку подключения от редактора.');
     }
   }
 
@@ -3097,34 +2490,18 @@ import { createReceiptScanner } from "./modules/receipt-scanner.js";
   }
 
   async function uploadToGoogleDrive() {
-    setSyncStatus("Открываю вход Google и шифрую полный файл...");
+    setSyncStatus('Открываю вход Google и шифрую полный файл...');
     try {
-      const accessToken = await getGoogleAccessToken("https://www.googleapis.com/auth/drive.file");
-      const payload = JSON.stringify(await encryptCloudPayload(getCloudPayload()));
-      const headers = { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" };
-      let response;
-      if (state.syncSettings.googleFileId) {
-        response = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${encodeURIComponent(state.syncSettings.googleFileId)}?uploadType=media`, {
-          method: "PATCH",
-          headers,
-          body: payload,
-        });
-      } else {
-        const boundary = `moneyflow-${getUuid()}`;
-        response = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            "Content-Type": `multipart/related; boundary=${boundary}`,
-          },
-          body: `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify({ name: "moneyflow-data.json", mimeType: "application/json" })}\r\n--${boundary}\r\nContent-Type: application/json\r\n\r\n${payload}\r\n--${boundary}--`,
-        });
-      }
-      if (!response.ok) throw new Error(`Google Drive: ${response.status}`);
-      const metadata = await response.json();
+      const accessToken = await getGoogleAccessToken('https://www.googleapis.com/auth/drive.file');
+      const metadata = await uploadDriveData({
+        accessToken,
+        fileId: state.syncSettings.googleFileId,
+        payload: JSON.stringify(await encryptCloudPayload(getCloudPayload())),
+        createId: getUuid,
+      });
       if (!state.syncSettings.googleFileId && metadata?.id) {
         state.syncSettings.googleFileId = metadata.id;
-        state.syncSettings.accessMode = "writer";
+        state.syncSettings.accessMode = 'writer';
       }
       state.syncSettings.lastSuccessfulSyncAt = new Date().toISOString();
       await persistSyncSettings();
@@ -3133,67 +2510,35 @@ import { createReceiptScanner } from "./modules/receipt-scanner.js";
       renderLastSuccessfulSync();
       clearPendingCloudChanges();
       render();
-      setSyncStatus("Зашифрованный файл успешно выгружен в Google Drive.");
-      showAppNotice("Данные успешно выгружены в облако.");
+      setSyncStatus('Зашифрованный файл успешно выгружен в Google Drive.');
+      showAppNotice('Данные успешно выгружены в облако.');
     } catch (error) {
       const message = `Выгрузка неуспешна: ${error?.message || "неизвестная ошибка"}`;
       setSyncStatus(message);
-      showAppNotice(message, "error");
+      showAppNotice(message, 'error');
     }
   }
 
   async function downloadFromGoogleDrive({ skipReplaceConfirmation = false } = {}) {
-    setSyncStatus("Открываю вход Google и загружаю файл...");
+    setSyncStatus('Открываю вход Google и загружаю файл...');
     try {
-      const accessToken = await getGoogleAccessToken("https://www.googleapis.com/auth/drive.readonly");
+      const accessToken = await getGoogleAccessToken('https://www.googleapis.com/auth/drive.readonly');
       if (!state.syncSettings.googleFileId) {
-        const query = encodeURIComponent("name = 'moneyflow-data.json' and trashed = false");
-        const fileListResponse = await fetch(
-          `https://www.googleapis.com/drive/v3/files?q=${query}&orderBy=modifiedTime desc&pageSize=1&fields=files(id,name,modifiedTime)`,
-          { headers: { Authorization: `Bearer ${accessToken}` }, cache: "no-store" },
-        );
-        if (!fileListResponse.ok) throw new Error(`Google Drive: ${fileListResponse.status}`);
-        const fileList = await fileListResponse.json();
-        const cloudFile = fileList?.files?.[0];
-        if (!cloudFile?.id) {
-          throw new Error("Файл MoneyFlow не найден. Сначала выгрузите данные в облако.");
-        }
+        const cloudFile = await findLatestDriveFile({ accessToken });
+        if (!cloudFile?.id) throw new Error('Файл MoneyFlow не найден. Сначала выгрузите данные в облако.');
         state.syncSettings.googleFileId = cloudFile.id;
-        state.syncSettings.accessMode = "unknown";
+        state.syncSettings.accessMode = 'unknown';
         await persistSyncSettings();
         renderSyncSettingsForm();
         updateCloudAccessUI();
       }
-      if (!skipReplaceConfirmation && (state.operations.length || state.categories.length) && !window.confirm("Загрузка из облака полностью заменит локальные операции и категории. Продолжить?")) {
-        return;
-      }
-      const permissionResponse = await fetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(state.syncSettings.googleFileId)}?fields=capabilities(canEdit)`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-        cache: "no-store",
-      });
-      if (!permissionResponse.ok) {
-        throw new Error(permissionResponse.status === 404
-          ? "Нет доступа к файлу. Войдите под Gmail, которому редактор выдал доступ."
-          : `Google Drive: ${permissionResponse.status}`);
-      }
-      const permissions = await permissionResponse.json();
-      state.syncSettings.accessMode = permissions?.capabilities?.canEdit ? "writer" : "reader";
+      if (!skipReplaceConfirmation && (state.operations.length || state.categories.length) && !window.confirm('Загрузка из облака полностью заменит локальные операции и категории. Продолжить?')) return;
+      state.syncSettings.accessMode = await getDriveAccessMode({ accessToken, fileId: state.syncSettings.googleFileId });
       await persistSyncSettings();
       updateCloudAccessUI();
-      const response = await fetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(state.syncSettings.googleFileId)}?alt=media`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-        cache: "no-store",
-      });
-      if (!response.ok) {
-        throw new Error(response.status === 404
-          ? "Нет доступа к данным. Войдите под Gmail, которому редактор выдал доступ."
-          : `Google Drive: ${response.status}`);
-      }
-      const encryptedPayload = await response.json();
+      const encryptedPayload = await downloadDriveData({ accessToken, fileId: state.syncSettings.googleFileId });
       const payload = await decryptCloudPayload(encryptedPayload);
-      if (!Array.isArray(payload?.operations) || !Array.isArray(payload?.categories)) {
-        throw new Error("Файл не похож на данные MoneyFlow");
-      }
+      if (!Array.isArray(payload?.operations) || !Array.isArray(payload?.categories)) throw new Error('Файл не похож на данные MoneyFlow');
       state.operations = sanitizeOperations(payload.operations);
       state.categories = sanitizeCategories(payload.categories);
       state.activeCategoryFilter = new Set();
@@ -3207,14 +2552,12 @@ import { createReceiptScanner } from "./modules/receipt-scanner.js";
       renderLastSuccessfulSync();
       clearPendingCloudChanges();
       refreshReaderConnectionLink({ notify: false });
-      setSyncStatus("Данные из облака загружены. Локальные операции и категории заменены.");
-      showAppNotice(state.syncSettings.accessMode === "reader"
-        ? "Данные синхронизированы."
-        : "Данные из облака загружены.");
+      setSyncStatus('Данные из облака загружены. Локальные операции и категории заменены.');
+      showAppNotice(state.syncSettings.accessMode === 'reader' ? 'Данные синхронизированы.' : 'Данные из облака загружены.');
     } catch (error) {
       const message = `Загрузка неуспешна: ${error?.message || "неизвестная ошибка"}`;
       setSyncStatus(message);
-      showAppNotice(message, "error");
+      showAppNotice(message, 'error');
     }
   }
 
@@ -3227,8 +2570,8 @@ import { createReceiptScanner } from "./modules/receipt-scanner.js";
   }
 
   function loadMoreOperations() {
-    const yearFiltered = getOperationsByYear(enrichOperationsWithBalance(state.operations));
-    const visible = getFilteredOperations(yearFiltered);
+    const yearFiltered = getOperationsByYear(enrichOperationsWithBalance(state.operations, getCategoryName), state);
+    const visible = getFilteredOperations(yearFiltered, state);
     const totalPages = Math.ceil(visible.length / state.pageSize) || 0;
     if (state.currentPage >= totalPages) return;
 
@@ -3411,169 +2754,12 @@ import { createReceiptScanner } from "./modules/receipt-scanner.js";
     return selectedCategoryId;
   }
 
-  function getAllCategoriesSorted() {
-    return [...state.categories].sort((a, b) =>
-      normalizeTextForSearch(a.name).localeCompare(normalizeTextForSearch(b.name), "ru")
-    );
-  }
-
-  function findCategoryByNormalizedName(normalizedName) {
-    const target = normalizeTextForSearch(normalizedName);
-    if (!target) return null;
-    return state.categories.find((category) => normalizeTextForSearch(category.name) === target);
-  }
-
-  function getMatchedCategories(categories, normalizedQuery) {
-    const normalized = normalizeTextForSearch(normalizedQuery);
-    const all = getAllCategoriesSortedFrom(categories);
-
-    if (!normalized) {
-      return all;
-    }
-
-    const ranked = all
-      .map((category) => ({
-        category,
-        score: getCategorySearchScore(normalizeTextForSearch(category.name), normalized),
-      }))
-      .filter((entry) => entry.score >= CATEGORY_SEARCH_SIMILARITY_THRESHOLD)
-      .sort((left, right) => {
-        if (right.score === left.score) {
-          return normalizeTextForSearch(left.category.name).localeCompare(normalizeTextForSearch(right.category.name), "ru");
-        }
-        return right.score - left.score;
-      });
-
-    return ranked.map((entry) => entry.category);
-  }
-
-  function getAllCategoriesSortedFrom(categories) {
-    return [...categories].sort((a, b) =>
-      normalizeTextForSearch(a.name).localeCompare(normalizeTextForSearch(b.name), "ru"),
-    );
-  }
-
-  function getCategorySearchScore(categoryName, normalizedQuery) {
-    if (!normalizedQuery) return 1;
-    if (!categoryName) return 0;
-
-    if (categoryName === normalizedQuery) return 1.1;
-    if (categoryName.startsWith(normalizedQuery)) return 1.0;
-    if (categoryName.includes(` ${normalizedQuery}`) || categoryName.includes(normalizedQuery)) return 0.95;
-
-    const queryWords = normalizedQuery.split(" ").filter(Boolean);
-    const nameWords = categoryName.split(" ").filter(Boolean);
-    if (queryWords.length > 1) {
-      const allWordsFound = queryWords.every((word) =>
-        nameWords.some((nameWord) => nameWord.includes(word)),
-      );
-      if (allWordsFound) return 0.9;
-    }
-
-    if (normalizedQuery.length <= 3 && categoryName.includes(normalizedQuery[0])) {
-      return 0.7;
-    }
-
-    const distance = getLevenshteinDistance(categoryName, normalizedQuery);
-    const maxLen = Math.max(categoryName.length, normalizedQuery.length);
-    if (!maxLen) return 0;
-
-    return 1 - distance / maxLen;
-  }
-
-  function getLevenshteinDistance(left, right) {
-    const rows = left.length + 1;
-    const cols = right.length + 1;
-    const dp = new Array(rows);
-    for (let i = 0; i < rows; i += 1) {
-      dp[i] = new Array(cols);
-    }
-    for (let i = 0; i < rows; i += 1) dp[i][0] = i;
-    for (let j = 0; j < cols; j += 1) dp[0][j] = j;
-
-    for (let i = 1; i < rows; i += 1) {
-      for (let j = 1; j < cols; j += 1) {
-        if (left[i - 1] === right[j - 1]) {
-          dp[i][j] = dp[i - 1][j - 1];
-        } else {
-          dp[i][j] = Math.min(
-            dp[i - 1][j] + 1,
-            dp[i][j - 1] + 1,
-            dp[i - 1][j - 1] + 1,
-          );
-        }
-      }
-    }
-
-    return dp[left.length][right.length];
-  }
-
-  function mergeOperations(localOperations, remoteOperations) {
-    const seen = new Map();
-    const result = [];
-
-    for (const operation of localOperations) {
-      if (!operation || !operation.id) continue;
-      if (!seen.has(operation.id)) {
-        seen.set(operation.id, true);
-        result.push(operation);
-      }
-    }
-
-    for (const operation of remoteOperations) {
-      if (!operation || !operation.id || seen.has(operation.id)) continue;
-      if (!isOperationValid(operation)) continue;
-      seen.set(operation.id, true);
-      result.push(operation);
-    }
-
-    return result.sort((a, b) => compareOperationsChronologicalAscending(a, b));
-  }
-
-  function isOperationValid(operation) {
-    return (
-      ["income", "expense"].includes(operation.type) &&
-      Number.isFinite(Number(operation.amount)) &&
-      operation.categoryId &&
-      operation.operationDate &&
-      operation.id
-    );
-  }
-
-  function mergeCategories(localCategories, remoteCategories) {
-    const seen = new Map();
-
-    for (const category of localCategories) {
-      if (!category?.id || !category?.name) continue;
-      const normalized = normalizeTextForSearch(category.name);
-      const existing = seen.get(normalized);
-      if (!existing || existing.id !== category.id) {
-        seen.set(normalized, category);
-      }
-    }
-
-    for (const category of remoteCategories) {
-      if (!category?.id || !category?.name) continue;
-      const normalized = normalizeTextForSearch(category.name);
-      if (seen.has(normalized)) continue;
-
-      seen.set(normalized, {
-        id: category.id,
-        name: String(category.name || "").trim(),
-        mode: "both",
-        color: normalizeHexColor(category.color || "#64748b"),
-      });
-    }
-
-    return [...seen.values()].filter(Boolean);
-  }
-
   function addCategory(name, color) {
     const trimName = String(name || "").trim();
     if (!trimName) return null;
 
     const normalizedName = normalizeTextForSearch(trimName);
-    const existing = findCategoryByNormalizedName(normalizedName);
+    const existing = findCategoryByNormalizedName(state.categories, normalizedName);
     if (existing) {
       setCategorySelection(existing.id);
       return existing;
@@ -3593,13 +2779,8 @@ import { createReceiptScanner } from "./modules/receipt-scanner.js";
   }
 
   function getRandomCategoryColor() {
-    const usedColors = new Set(state.categories.map((category) => normalizeHexColor(category.color)));
-    const availableColors = CATEGORY_COLORS.filter((color) => !usedColors.has(color));
-    const palette = availableColors.length ? availableColors : CATEGORY_COLORS;
-    const randomIndex = Math.floor(Math.random() * palette.length);
-    return palette[randomIndex];
+    return pickCategoryColor(state.categories, CATEGORY_COLORS);
   }
-
   function addCategoryFromPickerSearch() {
     const name = (elements.categoryPickerInput.value || "").trim();
     if (!name) {
@@ -3616,56 +2797,8 @@ import { createReceiptScanner } from "./modules/receipt-scanner.js";
     closeCategoryPicker();
   }
 
-  function signedAmount(operation) {
-    if (operation.type === "income") return Math.abs(operation.amount);
-    if (operation.type === "expense") return -Math.abs(operation.amount);
-    return 0;
-  }
-
-  function formatMoney(value) {
-    const v = Number(value) || 0;
-    return v.toLocaleString("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  }
-
-  function formatDate(isoString) {
-    const date = new Date(isoString);
-    return date.toLocaleDateString("ru-RU", { day: "2-digit", month: "short", year: "numeric" });
-  }
-
-  function normalizeTextForSearch(text) {
-    return String(text || "")
-      .toLowerCase()
-      .normalize("NFKD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .trim();
-  }
-
-  function normalizeAmountForSearch(text) {
-    return normalizeTextForSearch(text).replace(/\s/g, "").replace(/,/g, ".");
-  }
-
-  function round2(value) {
-    return Math.round((Number(value) + Number.EPSILON) * 100) / 100;
-  }
-
-  function getUuid() {
-    if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
-    return `op-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
-  }
-
   function writeJson(key, value) {
     localStorage.setItem(key, JSON.stringify(value));
-  }
-
-  function bytesToBase64(bytes) {
-    let binary = "";
-    for (const byte of bytes) binary += String.fromCharCode(byte);
-    return btoa(binary);
-  }
-
-  function base64ToBytes(value) {
-    const binary = atob(value);
-    return Uint8Array.from(binary, (char) => char.charCodeAt(0));
   }
 
   function readJson(key, fallback) {
