@@ -1,12 +1,12 @@
-const CACHE_NAME = "moneyflow-v169";
+const CACHE_NAME = "moneyflow-v170";
 const SHARED_RECEIPTS_DB = "moneyflow-shared-receipts-v1";
 const SHARED_RECEIPTS_STORE = "receipts";
 const ASSETS = [
   "./",
   "./index.html",
-  "./styles.css?v=169",
-  "./vendor/jsqr/jsQR.js?v=169",
-  "./app.js?v=169",
+  "./styles.css?v=170",
+  "./vendor/jsqr/jsQR.js?v=170",
+  "./app.js?v=170",
   "./modules/receipt-parser.js",
   "./modules/receipt-scanner.js",
   "./modules/dates.js",
@@ -29,7 +29,7 @@ const ASSETS = [
   "./modules/data-actions-controller.js",
   "./modules/cloud-controller.js",
   "./modules/reader-access-controller.js",
-  "./manifest.webmanifest?v=169",
+  "./manifest.webmanifest?v=170",
   "./icons/moneyflow.svg",
   "./vendor/pdfjs/pdf.min.mjs",
   "./vendor/pdfjs/pdf.worker.min.mjs",
@@ -134,6 +134,20 @@ async function handleReceiptShare(request) {
 async function notifySharedReceiptsAvailable() {
   const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
   clients.forEach((client) => client.postMessage({ type: "moneyflow:shared-receipts-ready" }));
+  const appClient = clients.find((client) => {
+    try {
+      return new URL(client.url).pathname.startsWith(new URL(self.registration.scope).pathname);
+    } catch {
+      return false;
+    }
+  });
+  if (appClient && "focus" in appClient) {
+    try {
+      await appClient.focus();
+    } catch {
+      // Redirect from the share request remains the fallback launch path.
+    }
+  }
 }
 
 async function saveSharedReceipts(files) {
