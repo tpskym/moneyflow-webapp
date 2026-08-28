@@ -1,11 +1,11 @@
-const CACHE_NAME = "moneyflow-v151";
+const CACHE_NAME = "moneyflow-v154";
 const SHARED_RECEIPTS_DB = "moneyflow-shared-receipts-v1";
 const SHARED_RECEIPTS_STORE = "receipts";
 const ASSETS = [
   "./",
   "./index.html",
-  "./styles.css?v=151",
-  "./app.js?v=151",
+  "./styles.css?v=154",
+  "./app.js?v=154",
   "./modules/receipt-parser.js",
   "./modules/receipt-scanner.js",
   "./modules/dates.js",
@@ -15,7 +15,20 @@ const ASSETS = [
   "./modules/cloud-crypto.js",
   "./modules/google-drive-api.js",
   "./modules/sync-model.js",
-  "./manifest.webmanifest?v=151",
+  "./modules/operations-list.js",
+  "./modules/category-picker.js",
+  "./modules/quick-add-controller.js",
+  "./modules/filters-view.js",
+  "./modules/sync-settings-view.js",
+  "./modules/app-context.js",
+  "./modules/app-config.js",
+  "./modules/app-ui-controller.js",
+  "./modules/filter-controller.js",
+  "./modules/receipt-share-controller.js",
+  "./modules/data-actions-controller.js",
+  "./modules/cloud-controller.js",
+  "./modules/reader-access-controller.js",
+  "./manifest.webmanifest?v=154",
   "./icons/moneyflow.svg",
   "./vendor/pdfjs/pdf.min.mjs",
   "./vendor/pdfjs/pdf.worker.min.mjs",
@@ -209,3 +222,4 @@ function fetchAndCache(request) {
     })
     .catch(() => caches.match(request, { ignoreSearch: true }).then((cached) => cached || caches.match("./index.html")));
 }
+

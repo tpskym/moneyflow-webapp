@@ -2,7 +2,7 @@ import { readdir, readFile } from "node:fs/promises";
 import { join, relative } from "node:path";
 
 const root = process.cwd();
-const appLimit = 2824;
+const appLimit = 500;
 const moduleLimit = 400;
 
 async function collectJavaScriptFiles(directory) {
@@ -26,7 +26,8 @@ if (appLines > appLimit) failures.push(`app.js: ${appLines} строк, макс
 const moduleFiles = await collectJavaScriptFiles(join(root, "modules"));
 for (const file of moduleFiles) {
   const lines = await lineCount(file);
-  if (lines > moduleLimit) failures.push(`${relative(root, file)}: ${lines} строк, максимум ${moduleLimit}`);
+  const limit = moduleLimit;
+  if (lines > limit) failures.push(`${relative(root, file)}: ${lines} строк, максимум ${limit}`);
 }
 
 if (failures.length) {

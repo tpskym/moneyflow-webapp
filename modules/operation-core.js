@@ -23,6 +23,32 @@ export function prepareRemoteOperationForSync(operation, syncStartedAt, cursor, 
   return { ...operation, createdAt: new Date(getSyncCreatedAtBase(syncStartedAt, offsetMs) + cursor).toISOString() };
 }
 
+export function sanitizeOperations(operations) {
+  if (!Array.isArray(operations)) return [];
+  const ids = new Set();
+  return operations.reduce((result, source) => {
+    const id = String(source?.id || "").trim();
+    const type = String(source?.type || "");
+    const amount = round2(Math.abs(Number(source?.amount)));
+    const categoryId = String(source?.categoryId || "").trim();
+    const operationDate = getOperationDateValue(source);
+    if (ids.has(id) || !id || !["income", "expense"].includes(type) || !amount || !categoryId || !operationDate) return result;
+    ids.add(id);
+    result.push({
+      ...source,
+      id,
+      type,
+      amount,
+      categoryId,
+      operationDate,
+      description: String(source?.description || "").trim(),
+      createdAt: String(source?.createdAt || ""),
+      localAddedAt: String(source?.localAddedAt || ""),
+    });
+    return result;
+  }, []);
+}
+
 export function compareOperationsChronologicalAscending(left, right) {
   return getOperationSortDate(left) - getOperationSortDate(right) || dateToOrderTiebreak(left, right);
 }
