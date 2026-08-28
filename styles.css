@@ -1801,6 +1801,54 @@ body.amounts-hidden #category-charts {
   justify-content: center;
 }
 
+.receipt-processing-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  display: grid;
+  place-items: center;
+  padding: max(22px, env(safe-area-inset-top)) 22px max(22px, env(safe-area-inset-bottom));
+  background: rgba(2, 6, 23, 0.84);
+  backdrop-filter: blur(10px);
+}
+
+.receipt-processing-overlay[hidden] {
+  display: none;
+}
+
+.receipt-processing-dialog {
+  display: grid;
+  width: min(100%, 360px);
+  justify-items: center;
+  padding: 34px 24px;
+  border: 1px solid rgba(103, 232, 249, 0.46);
+  border-radius: 24px;
+  color: #f8fafc;
+  text-align: center;
+  background: linear-gradient(145deg, rgba(30, 41, 59, 0.98), rgba(8, 80, 101, 0.98));
+  box-shadow: 0 24px 70px rgba(2, 6, 23, 0.56);
+}
+
+.receipt-processing-dialog h2 {
+  margin: 18px 0 8px;
+  font-size: 25px;
+}
+
+.receipt-processing-dialog p {
+  margin: 0;
+  color: #bae6fd;
+  line-height: 1.45;
+}
+
+.receipt-processing-spinner {
+  width: 54px;
+  height: 54px;
+  border: 5px solid rgba(186, 230, 253, 0.24);
+  border-top-color: #22d3ee;
+  border-radius: 50%;
+  animation: cloud-action-spin 0.78s linear infinite;
+}
+
 #instructions-close {
   display: flex;
   width: 100% !important;

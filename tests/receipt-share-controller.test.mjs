@@ -4,6 +4,7 @@ import {
   bindShareLaunchQueue,
   createReceiptShareController,
   createSharedReceiptDraft,
+  setReceiptProcessingState,
 } from "../modules/receipt-share-controller.js";
 
 test("повторный запуск открытой PWA обрабатывается через launchQueue", () => {
@@ -17,6 +18,26 @@ test("повторный запуск открытой PWA обрабатыва�
   consumer({ targetURL: "https://example.test/?shared-checks=1" });
 
   assert.equal(received, 1);
+});
+
+test("показывает состояние обработки переданного PDF", () => {
+  const attributes = new Map();
+  const elements = {
+    receiptProcessingOverlay: {
+      hidden: true,
+      setAttribute(name, value) { attributes.set(name, value); },
+    },
+    receiptProcessingStatus: { textContent: "" },
+  };
+
+  setReceiptProcessingState(elements, true, "Обрабатываем PDF...");
+  assert.equal(elements.receiptProcessingOverlay.hidden, false);
+  assert.equal(elements.receiptProcessingStatus.textContent, "Обрабатываем PDF...");
+  assert.equal(attributes.get("aria-busy"), "true");
+
+  setReceiptProcessingState(elements, false);
+  assert.equal(elements.receiptProcessingOverlay.hidden, true);
+  assert.equal(attributes.get("aria-busy"), "false");
 });
 
 test("создаёт черновик для распознанного чека", async () => {

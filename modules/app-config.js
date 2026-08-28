@@ -166,6 +166,8 @@ export function createElements(doc = document) {
     sharedReceiptsCard: byId("shared-receipts-card"),
     sharedReceiptsCount: byId("shared-receipts-count"),
     sharedReceiptsList: byId("shared-receipts-list"),
+    receiptProcessingOverlay: byId("receipt-processing-overlay"),
+    receiptProcessingStatus: byId("receipt-processing-status"),
     receiptScanToggleButton: byId("receipt-scan-toggle"),
     receiptScannerCard: byId("receipt-scanner-card"),
     receiptScannerVideo: byId("receipt-scanner-video"),

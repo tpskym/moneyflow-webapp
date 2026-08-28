@@ -3,12 +3,12 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import vm from "node:vm";
 
-test("Share Target использует отдельный POST endpoint без конфликтующей навигации", async () => {
+test("Share Target направляет повторный запуск в открытое окно PWA", async () => {
   const manifest = JSON.parse(
     await readFile(new URL("../manifest.webmanifest", import.meta.url), "utf8"),
   );
   assert.equal(manifest.share_target.action, "./receive-check/");
-  assert.equal(manifest.launch_handler.client_mode, "focus-existing");
+  assert.equal(manifest.launch_handler.client_mode, "navigate-existing");
 
   const source = await readFile(new URL("../sw.js", import.meta.url), "utf8");
   const context = {

@@ -7,7 +7,21 @@ import {
 import { createReceiptScanner } from "./receipt-scanner.js";
 
 export function bindShareLaunchQueue(launchQueue, receive) {
-  launchQueue?.setConsumer?.(() => receive());
+  launchQueue?.setConsumer?.((launchParams) => receive(launchParams));
+}
+
+export function setReceiptProcessingState(
+  elements,
+  visible,
+  message = "Обрабатываем переданные файлы...",
+) {
+  const overlay = elements.receiptProcessingOverlay;
+  if (!overlay) return;
+  overlay.hidden = !visible;
+  overlay.setAttribute?.("aria-busy", String(visible));
+  if (elements.receiptProcessingStatus) {
+    elements.receiptProcessingStatus.textContent = message;
+  }
 }
 
 export async function createSharedReceiptDraft(
@@ -45,6 +59,7 @@ export async function createSharedReceiptDraft(
 export function createReceiptShareController(context) {
   const { elements, state, actions } = context;
   let receiving = false;
+  let receiveAgain = false;
   let scanner = null;
   const escape = (value) => actions.call("escapeHtml", value);
   function renderQueue() {
@@ -88,7 +103,10 @@ export function createReceiptShareController(context) {
     });
   }
   async function receiveFromShareTarget() {
-    if (receiving) return;
+    if (receiving) {
+      receiveAgain = true;
+      return;
+    }
     const url = new URL(window.location.href);
     const sharedLaunch = url.searchParams.get("shared-checks") === "1";
     if (sharedLaunch) {
@@ -110,6 +128,13 @@ export function createReceiptShareController(context) {
       return;
     }
     receiving = true;
+    if (sharedLaunch) {
+      setReceiptProcessingState(
+        elements,
+        true,
+        "Получаем переданные файлы...",
+      );
+    }
     try {
       const registration = await navigator.serviceWorker.ready;
       const worker = navigator.serviceWorker.controller || registration.active;
@@ -120,11 +145,31 @@ export function createReceiptShareController(context) {
         if (sharedLaunch) throw new Error("картинки чеков не найдены");
         return;
       }
-      state.sharedReceiptDrafts = await Promise.all(
-        receipts.map((receipt, index) =>
-          createSharedReceiptDraft(receipt, index),
-        ),
+      const containsPdf = receipts.some(
+        (receipt) =>
+          receipt?.type === "application/pdf" ||
+          String(receipt?.name || "").toLowerCase().endsWith(".pdf"),
       );
+      setReceiptProcessingState(
+        elements,
+        true,
+        containsPdf
+          ? "Обрабатываем PDF. Это может занять некоторое время..."
+          : "Распознаем QR-код чека...",
+      );
+      await waitForProcessingPaint();
+      const drafts = [];
+      for (const [index, receipt] of receipts.entries()) {
+        if (receipts.length > 1) {
+          setReceiptProcessingState(
+            elements,
+            true,
+            `Обрабатываем файл ${index + 1} из ${receipts.length}...`,
+          );
+        }
+        drafts.push(await createSharedReceiptDraft(receipt, index));
+      }
+      state.sharedReceiptDrafts = drafts;
       worker.postMessage({
         type: "moneyflow:clear-shared-receipts",
         ids: receipts.map((receipt) => receipt.id),
@@ -147,7 +192,12 @@ export function createReceiptShareController(context) {
         "error",
       );
     } finally {
+      setReceiptProcessingState(elements, false);
       receiving = false;
+      if (receiveAgain) {
+        receiveAgain = false;
+        window.setTimeout(receiveFromShareTarget, 0);
+      }
     }
   }
   function onQueueClick(event) {
@@ -223,7 +273,7 @@ export function createReceiptShareController(context) {
   }
   function bind() {
     const scheduleReceive = () => {
-      [0, 250, 1000, 2500].forEach((delay) =>
+      [0, 400, 1200, 3000, 7000, 12000].forEach((delay) =>
         window.setTimeout(receiveFromShareTarget, delay),
       );
     };
@@ -246,4 +296,15 @@ export function createReceiptShareController(context) {
     });
   }
   return { bind, onQueueClick, receiveFromShareTarget, renderQueue };
+}
+
+function waitForProcessingPaint() {
+  return new Promise((resolve) => {
+    const afterFrame = () => window.setTimeout(resolve, 20);
+    if (typeof window.requestAnimationFrame === "function") {
+      window.requestAnimationFrame(afterFrame);
+    } else {
+      afterFrame();
+    }
+  });
 }
