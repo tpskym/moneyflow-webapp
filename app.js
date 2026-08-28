@@ -238,7 +238,7 @@
     if (isLocalHost) return;
     if (!("serviceWorker" in navigator)) return;
     window.addEventListener("load", () => {
-      navigator.serviceWorker.register("sw.js?v=143").then((registration) => registration.update()).catch(() => {});
+      navigator.serviceWorker.register("sw.js?v=144").then((registration) => registration.update()).catch(() => {});
     });
   }
 
@@ -2929,6 +2929,7 @@
       updateCloudAccessUI();
       renderLastSuccessfulSync();
       clearPendingCloudChanges();
+      render();
       setSyncStatus("Зашифрованный файл успешно выгружен в Google Drive.");
       showAppNotice("Данные успешно выгружены в облако.");
     } catch (error) {

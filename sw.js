@@ -1,10 +1,10 @@
-const CACHE_NAME = "moneyflow-v143";
+const CACHE_NAME = "moneyflow-v144";
 const ASSETS = [
   "./",
   "./index.html",
-  "./styles.css?v=143",
-  "./app.js?v=143",
-  "./manifest.webmanifest?v=143",
+  "./styles.css?v=144",
+  "./app.js?v=144",
+  "./manifest.webmanifest?v=144",
   "./icons/moneyflow.svg",
 ];
 
