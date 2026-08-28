@@ -128,7 +128,6 @@ async function defaultRequestCamera(getUserMedia, {
 async function switchToRearCameraIfNeeded(stream, getUserMedia, enumerateDevices, waitingNoticeMs, onWaiting) {
   const activeTrack = stream?.getVideoTracks?.()[0];
   const activeSettings = activeTrack?.getSettings?.() || {};
-  if (activeSettings.facingMode === "environment") return stream;
 
   let devices;
   try {

@@ -104,7 +104,7 @@ test("переключает ошибочно открытую фронталь�
   let frontStopped = false;
   const frontStream = {
     getTracks: () => [{ stop: () => { frontStopped = true; } }],
-    getVideoTracks: () => [{ getSettings: () => ({ deviceId: "front", facingMode: "user" }) }],
+    getVideoTracks: () => [{ getSettings: () => ({ deviceId: "front", facingMode: "environment" }) }],
   };
   const rearStream = { getTracks: () => [] };
   const scanner = createReceiptScanner({
