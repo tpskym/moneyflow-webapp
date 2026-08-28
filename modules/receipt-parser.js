@@ -35,14 +35,49 @@ export function parseReceiptQrDate(value) {
   return `${year}-${month}-${day}`;
 }
 
-export function createQrDetector() {
-  const Detector = globalThis.BarcodeDetector;
-  if (typeof Detector !== "function") throw new Error("в этом браузере нет распознавания QR из изображения");
-  try {
-    return new Detector({ formats: ["qr_code"] });
-  } catch {
-    return new Detector();
+export function createQrDetector({
+  Detector = globalThis.BarcodeDetector,
+  decode = globalThis.jsQR,
+  createCanvas = defaultCreateCanvas,
+} = {}) {
+  if (typeof Detector === "function") {
+    try {
+      return new Detector({ formats: ["qr_code"] });
+    } catch {
+      try {
+        return new Detector();
+      } catch {
+        // Use the local decoder below when the native API cannot initialize.
+      }
+    }
   }
+  return createJsQrDetector({ decode, createCanvas });
+}
+
+function createJsQrDetector({ decode, createCanvas }) {
+  if (typeof decode !== "function")
+    throw new Error("в этом браузере нет распознавания QR из изображения");
+  return {
+    async detect(source) {
+      const width = Math.floor(Number(source?.videoWidth || source?.naturalWidth || source?.width || 0));
+      const height = Math.floor(Number(source?.videoHeight || source?.naturalHeight || source?.height || 0));
+      if (!width || !height) return [];
+      const canvas = createCanvas(width, height);
+      const context = canvas?.getContext?.("2d", { willReadFrequently: true });
+      if (!context) throw new Error("не удалось подготовить кадр камеры");
+      context.drawImage(source, 0, 0, width, height);
+      const image = context.getImageData(0, 0, width, height);
+      const result = decode(image.data, width, height, { inversionAttempts: "attemptBoth" });
+      return String(result?.data || "").trim() ? [{ rawValue: result.data }] : [];
+    },
+  };
+}
+
+function defaultCreateCanvas(width, height) {
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  return canvas;
 }
 
 export async function detectQrFromSource(source, detector = createQrDetector()) {

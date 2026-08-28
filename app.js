@@ -418,7 +418,7 @@ import { isValidEncryptionKey } from "./modules/cloud-crypto.js";
     )
       return;
     navigator.serviceWorker
-      .register("sw.js?v=158")
+      .register("sw.js?v=159")
       .then((registration) => registration.update())
       .catch(() => {});
   }

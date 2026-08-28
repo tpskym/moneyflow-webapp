@@ -8,6 +8,7 @@ export function createReceiptScanner({
   createDetector = createQrDetector,
   detectQr = detectQrFromSource,
   parseReceipt = parseReceiptQr,
+  requestCamera = defaultRequestCamera,
   scheduleFrame = defaultScheduleFrame,
   cancelFrame = defaultCancelFrame,
 } = {}) {
@@ -28,16 +29,13 @@ export function createReceiptScanner({
 
     try {
       detector = createDetector();
-      stream = await getUserMedia({
-        audio: false,
-        video: { facingMode: { ideal: "environment" } },
-      });
+      stream = await requestCamera(getUserMedia);
       elements.video.srcObject = stream;
       await elements.video.play();
       setStatus("Наведите камеру на QR-код чека.");
       scanFrame();
     } catch (error) {
-      setStatus(`Не удалось открыть сканер: ${error?.message || "нет доступа к камере"}.`);
+      setStatus(`Не удалось открыть сканер: ${getScannerErrorMessage(error)}.`);
       close({ keepMessage: true });
     }
   }
@@ -90,6 +88,27 @@ export function createReceiptScanner({
 function defaultGetUserMedia(constraints) {
   if (!navigator.mediaDevices?.getUserMedia) throw new Error("камера недоступна в этом браузере");
   return navigator.mediaDevices.getUserMedia(constraints);
+}
+
+async function defaultRequestCamera(getUserMedia) {
+  try {
+    return await getUserMedia({
+      audio: false,
+      video: { facingMode: { ideal: "environment" } },
+    });
+  } catch (error) {
+    if (!["AbortError", "NotFoundError", "NotReadableError", "OverconstrainedError"].includes(error?.name)) throw error;
+    return getUserMedia({ audio: false, video: true });
+  }
+}
+
+function getScannerErrorMessage(error) {
+  if (error?.name === "NotAllowedError" || error?.name === "SecurityError")
+    return "разрешите доступ к камере в настройках браузера";
+  if (error?.name === "NotReadableError")
+    return "камера занята другим приложением, закройте его и повторите попытку";
+  if (error?.name === "NotFoundError") return "камера не найдена";
+  return error?.message || "нет доступа к камере";
 }
 
 function defaultScheduleFrame(callback) {

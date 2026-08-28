@@ -71,3 +71,29 @@ test("оставляет понятную ошибку при запрете к�
   assert.equal(elements.card.hidden, false);
   assert.match(elements.status.textContent, /Permission denied/);
 });
+
+test("повторяет запуск камеры без выбора задней камеры", async () => {
+  const elements = createElements();
+  const constraints = [];
+  const scanner = createReceiptScanner({
+    elements,
+    getUserMedia: async (request) => {
+      constraints.push(request);
+      if (constraints.length === 1) {
+        const error = new Error("Could not start video service");
+        error.name = "NotReadableError";
+        throw error;
+      }
+      return { getTracks: () => [] };
+    },
+    createDetector: () => ({ detect: async () => [] }),
+    scheduleFrame: () => 1,
+  });
+
+  await scanner.toggle();
+
+  assert.deepEqual(constraints, [
+    { audio: false, video: { facingMode: { ideal: "environment" } } },
+    { audio: false, video: true },
+  ]);
+});

@@ -20,6 +20,8 @@ const versions = [
   requiredVersion(app, /sw\.js\?v=(\d+)/, "service worker в app.js"),
   requiredVersion(worker, /moneyflow-v(\d+)/, "кэш service worker"),
   requiredVersion(worker, /styles\.css\?v=(\d+)/, "styles.css в service worker"),
+  requiredVersion(index, /vendor\/jsqr\/jsQR\.js\?v=(\d+)/, "jsQR в index.html"),
+  requiredVersion(worker, /vendor\/jsqr\/jsQR\.js\?v=(\d+)/, "jsQR в service worker"),
   requiredVersion(worker, /app\.js\?v=(\d+)/, "app.js в service worker"),
 ];
 

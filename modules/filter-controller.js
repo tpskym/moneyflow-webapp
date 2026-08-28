@@ -16,6 +16,16 @@ export function normalizePeriodSelection(state) {
   } else if (state.activeMonthFilter.size !== 1) state.activeDayFilter.clear();
 }
 
+export function applyTypeFilter(state, value, chips = []) {
+  if (!state || !["all", "income", "expense"].includes(value)) return;
+  state.activeTypeFilter = value;
+  for (const chip of chips) {
+    const active = chip.getAttribute("data-type") === value;
+    chip.classList.toggle("active", active);
+    chip.setAttribute("aria-pressed", String(active));
+  }
+}
+
 export function createFilterController(context) {
   const { elements, state, actions } = context;
   let searchDebounce;
@@ -163,7 +173,11 @@ export function createFilterController(context) {
       .closest("[data-type]")
       ?.getAttribute("data-type");
     if (!value) return;
-    state.activeTypeFilter = value;
+    applyTypeFilter(
+      state,
+      value,
+      elements.chipContainer?.querySelectorAll("[data-type]") || [],
+    );
     resetPage();
     redraw();
   }

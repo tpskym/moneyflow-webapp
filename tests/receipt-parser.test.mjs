@@ -44,3 +44,27 @@ test("отклоняет несуществующие даты QR", () => {
     assert.equal(parseReceiptQrDate(value), "");
   }
 });
+
+test("использует локальный jsQR, если BarcodeDetector недоступен", async () => {
+  const { createQrDetector } = await import("../modules/receipt-parser.js");
+  const calls = [];
+  const detector = createQrDetector({
+    Detector: undefined,
+    decode: (data, width, height) => {
+      calls.push({ data, width, height });
+      return { data: "t=20260828T120000&s=100" };
+    },
+    createCanvas: () => ({
+      getContext: () => ({
+        drawImage: () => {},
+        getImageData: () => ({ data: new Uint8ClampedArray(6) }),
+      }),
+    }),
+  });
+
+  const codes = await detector.detect({ videoWidth: 3, videoHeight: 2 });
+
+  assert.deepEqual(codes, [{ rawValue: "t=20260828T120000&s=100" }]);
+  assert.equal(calls[0].width, 3);
+  assert.equal(calls[0].height, 2);
+});

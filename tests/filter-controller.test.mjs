@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { applyPeriodSelection } from "../modules/filter-controller.js";
+import { applyPeriodSelection, applyTypeFilter } from "../modules/filter-controller.js";
 
 const state = () => ({
   activeYearFilter: new Set([2026]),
@@ -25,4 +25,35 @@ test("несколько лет сбрасывают месяцы и дни", ()
   applyPeriodSelection(value, "month", 6, "add");
   assert.equal(value.activeMonthFilter.size, 0);
   assert.equal(value.activeDayFilter.size, 0);
+});
+
+test("выделяет выбранный тип операции в поиске", () => {
+  const value = { activeTypeFilter: "all" };
+  const chips = ["all", "income", "expense"].map((type) => ({
+    type,
+    attributes: new Map(),
+    classes: new Set(type === "all" ? ["active"] : []),
+    getAttribute(name) {
+      return name === "data-type" ? this.type : null;
+    },
+    setAttribute(name, content) {
+      this.attributes.set(name, content);
+    },
+    classList: {
+      toggle(name, enabled) {
+        if (enabled) this.owner.classes.add(name);
+        else this.owner.classes.delete(name);
+      },
+      owner: null,
+    },
+  }));
+  chips.forEach((chip) => {
+    chip.classList.owner = chip;
+  });
+
+  applyTypeFilter(value, "expense", chips);
+
+  assert.equal(value.activeTypeFilter, "expense");
+  assert.deepEqual(chips.map((chip) => chip.classes.has("active")), [false, false, true]);
+  assert.deepEqual(chips.map((chip) => chip.attributes.get("aria-pressed")), ["false", "false", "true"]);
 });

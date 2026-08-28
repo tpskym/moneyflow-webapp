@@ -1792,6 +1792,12 @@ body.amounts-hidden #category-charts {
   margin: 12px 0 0;
 }
 
+.receipt-scanner-close {
+  width: 100%;
+  min-height: 52px;
+  margin-top: 16px;
+}
+
 @media (max-width: 420px) {
   .sync-actions {
     grid-template-columns: minmax(0, 1fr) 54px;
