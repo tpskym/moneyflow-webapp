@@ -1,12 +1,12 @@
-const CACHE_NAME = "moneyflow-v160";
+const CACHE_NAME = "moneyflow-v161";
 const SHARED_RECEIPTS_DB = "moneyflow-shared-receipts-v1";
 const SHARED_RECEIPTS_STORE = "receipts";
 const ASSETS = [
   "./",
   "./index.html",
-  "./styles.css?v=160",
-  "./vendor/jsqr/jsQR.js?v=160",
-  "./app.js?v=160",
+  "./styles.css?v=161",
+  "./vendor/jsqr/jsQR.js?v=161",
+  "./app.js?v=161",
   "./modules/receipt-parser.js",
   "./modules/receipt-scanner.js",
   "./modules/dates.js",
@@ -29,7 +29,7 @@ const ASSETS = [
   "./modules/data-actions-controller.js",
   "./modules/cloud-controller.js",
   "./modules/reader-access-controller.js",
-  "./manifest.webmanifest?v=155",
+  "./manifest.webmanifest?v=161",
   "./icons/moneyflow.svg",
   "./vendor/pdfjs/pdf.min.mjs",
   "./vendor/pdfjs/pdf.worker.min.mjs",
@@ -209,7 +209,9 @@ function isAppShellRequest(request) {
   if (url.origin !== scope.origin || !url.pathname.startsWith(scope.pathname)) return false;
 
   const relativePath = url.pathname.slice(scope.pathname.length);
-  return ["", "index.html", "app.js", "styles.css", "manifest.webmanifest"].includes(relativePath);
+  return ["", "index.html", "app.js", "styles.css", "manifest.webmanifest"].includes(relativePath)
+    || relativePath.startsWith("modules/")
+    || relativePath.startsWith("vendor/");
 }
 
 function fetchAndCache(request) {

@@ -417,8 +417,14 @@ import { isValidEncryptionKey } from "./modules/cloud-crypto.js";
       !("serviceWorker" in navigator)
     )
       return;
+    let reloadingForUpdate = false;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (reloadingForUpdate) return;
+      reloadingForUpdate = true;
+      window.location.reload();
+    });
     navigator.serviceWorker
-      .register("sw.js?v=160")
+      .register("sw.js?v=161")
       .then((registration) => registration.update())
       .catch(() => {});
   }

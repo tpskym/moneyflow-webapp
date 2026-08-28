@@ -16,10 +16,13 @@ function requiredVersion(source, pattern, label) {
 
 const versions = [
   requiredVersion(index, /class="app-version">v(\d+)</, "отображаемая версия"),
+  requiredVersion(index, /styles\.css\?v=(\d+)/, "styles.css в index.html"),
+  requiredVersion(index, /manifest\.webmanifest\?v=(\d+)/, "manifest в index.html"),
   requiredVersion(index, /app\.js\?v=(\d+)/, "app.js в index.html"),
   requiredVersion(app, /sw\.js\?v=(\d+)/, "service worker в app.js"),
   requiredVersion(worker, /moneyflow-v(\d+)/, "кэш service worker"),
   requiredVersion(worker, /styles\.css\?v=(\d+)/, "styles.css в service worker"),
+  requiredVersion(worker, /manifest\.webmanifest\?v=(\d+)/, "manifest в service worker"),
   requiredVersion(index, /vendor\/jsqr\/jsQR\.js\?v=(\d+)/, "jsQR в index.html"),
   requiredVersion(worker, /vendor\/jsqr\/jsQR\.js\?v=(\d+)/, "jsQR в service worker"),
   requiredVersion(worker, /app\.js\?v=(\d+)/, "app.js в service worker"),

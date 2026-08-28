@@ -1807,6 +1807,15 @@ body.amounts-hidden #category-charts {
   justify-content: center;
 }
 
+#instructions-close {
+  display: flex;
+  width: 100% !important;
+  max-width: none;
+  min-height: 52px;
+  align-self: stretch;
+  justify-content: center;
+}
+
 @media (max-width: 420px) {
   .sync-actions {
     grid-template-columns: minmax(0, 1fr) 54px;
