@@ -112,14 +112,21 @@ export function combineReceiptQrs(rawValues) {
   if (!uniqueReceipts.length) return "";
   if (uniqueReceipts.length === 1) return uniqueReceipts[0].raw;
 
-  const amount = Math.round(
-    (uniqueReceipts.reduce((sum, receipt) => sum + receipt.parsed.amount, 0) + Number.EPSILON) * 100,
-  ) / 100;
+  const amountInKopecks = uniqueReceipts.reduce(
+    (sum, receipt) => sum + amountToKopecks(receipt.parsed.amount),
+    0n,
+  );
+  const amount = `${amountInKopecks / 100n}.${String(amountInKopecks % 100n).padStart(2, "0")}`;
   const operationDate = uniqueReceipts
     .map((receipt) => receipt.parsed.operationDate)
     .sort()
     .at(-1);
-  return `t=${operationDate.replaceAll("-", "")}T000000&s=${amount.toFixed(2)}`;
+  return `t=${operationDate.replaceAll("-", "")}T000000&s=${amount}`;
+}
+
+function amountToKopecks(amount) {
+  const [rubles = "0", kopecks = ""] = String(amount).split(".");
+  return BigInt(rubles) * 100n + BigInt(kopecks.padEnd(2, "0").slice(0, 2) || "0");
 }
 
 export async function decodeReceiptQrFromFile(file, name) {

@@ -12,12 +12,23 @@ test("суммирует все уникальные чеки из PDF и бер
   const second = "t=20260822T130000&s=250.40&fn=10&i=2";
   const combined = combineReceiptQrs([first, second, first, "https://example.test/not-a-receipt"]);
 
+  assert.match(combined, /s=350\.65$/);
   assert.deepEqual(parseReceiptQr(combined), {
     amount: 350.65,
     operationDate: "2026-08-22",
     fiscalNumber: "",
     fiscalDocument: "",
   });
+});
+
+test("складывает копейки без округления и погрешности float", () => {
+  const combined = combineReceiptQrs([
+    "t=20260822T120000&s=0.10&fn=10&i=1",
+    "t=20260822T120100&s=0.20&fn=10&i=2",
+  ]);
+
+  assert.match(combined, /s=0\.30$/);
+  assert.equal(parseReceiptQr(combined).amount, 0.3);
 });
 
 test("разбирает QR ФНС из адреса и переносит сумму, дату и фискальные поля", () => {
