@@ -10,17 +10,17 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="M-Flow" />
     <title>M-Flow</title>
-    <link rel="manifest" href="manifest.webmanifest?v=148" />
+    <link rel="manifest" href="manifest.webmanifest?v=149" />
     <link rel="icon" href="icons/moneyflow.svg?v=120" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="icons/moneyflow.svg?v=120" />
-    <link rel="stylesheet" href="styles.css?v=148" />
+    <link rel="stylesheet" href="styles.css?v=149" />
   </head>
   <body>
     <div class="page">
       <header class="header">
         <div class="header-heading">
           <p class="eyebrow">Личный счёт</p>
-          <div class="brand-title-row"><h1>M-Flow</h1><span class="app-version">v148</span></div>
+          <div class="brand-title-row"><h1>M-Flow</h1><span class="app-version">v149</span></div>
           <p class="subtitle"><span class="subtitle-label">Учет доходов и расходов</span></p>
         </div>
         <div class="header-tools">
@@ -71,6 +71,10 @@
             title="Открыть быстрое добавление"
           >
             <span>Быстрое добавление</span>
+          </button>
+          <button type="button" id="receipt-scan-toggle" class="btn btn--small receipt-scan-toggle" aria-label="Сканировать QR чека" title="Сканировать QR чека">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V5h4M15 5h5v4M20 15v4h-4M9 20H4v-5M8 8h3v3H8zM13 8h3v3h-3zM8 13h3v3H8zM14 14h2v2h-2z" /></svg>
+            <span class="sr-only">Сканировать QR чека</span>
           </button>
         </div>
       </header>
@@ -261,6 +265,21 @@
           <div id="shared-receipts-list" class="shared-receipts-list" aria-live="polite"></div>
         </section>
 
+        <section class="card receipt-scanner-card" id="receipt-scanner-card" hidden>
+          <div class="receipt-scanner-heading">
+            <div>
+              <p class="eyebrow">ДОБАВЛЕНИЕ ЧЕКА</p>
+              <h2>Сканировать QR</h2>
+            </div>
+            <button type="button" id="receipt-scanner-close" class="icon-button" aria-label="Закрыть сканер">×</button>
+          </div>
+          <div class="receipt-scanner-view">
+            <video id="receipt-scanner-video" autoplay muted playsinline></video>
+            <div class="receipt-scanner-frame" aria-hidden="true"></div>
+          </div>
+          <p id="receipt-scanner-status" class="muted">Наведите камеру на QR-код чека.</p>
+        </section>
+
         <div class="overview-divider">
           <span>Состояние счёта <span id="last-successful-sync" class="last-successful-sync">· ещё не было</span></span>
         </div>
@@ -354,6 +373,6 @@
     <div id="app-notice" class="app-notice" role="status" aria-live="polite" hidden></div>
 
     <script src="https://accounts.google.com/gsi/client" async></script>
-    <script src="app.js?v=148" defer></script>
+    <script type="module" src="app.js?v=149"></script>
   </body>
 </html>

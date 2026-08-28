@@ -5,7 +5,8 @@
   "description": "PWA приложение для учета расходов/доходов с локальным хранением и WebDAV sync.",
   "scripts": {
     "dev": "node dev-server.js",
-    "start": "npm run dev"
+    "start": "npm run dev",
+    "test": "node --test"
   },
   "author": "moneyflow-local",
   "license": "MIT"

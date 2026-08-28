@@ -1,3 +1,10 @@
+import {
+  createQrDetector as createReceiptQrDetector,
+  decodeReceiptQrFromFile,
+  detectQrFromSource as detectReceiptQrFromSource,
+  parseReceiptQr as parseReceiptQrFromValue,
+} from "./modules/receipt-parser.js";
+
 (() => {
   const STORAGE_KEYS = {
     operations: "moneyflow-operations-v1",
@@ -125,6 +132,11 @@
     sharedReceiptsCard: document.getElementById("shared-receipts-card"),
     sharedReceiptsCount: document.getElementById("shared-receipts-count"),
     sharedReceiptsList: document.getElementById("shared-receipts-list"),
+    receiptScanToggleButton: document.getElementById("receipt-scan-toggle"),
+    receiptScannerCard: document.getElementById("receipt-scanner-card"),
+    receiptScannerVideo: document.getElementById("receipt-scanner-video"),
+    receiptScannerCloseButton: document.getElementById("receipt-scanner-close"),
+    receiptScannerStatus: document.getElementById("receipt-scanner-status"),
   };
 
   const state = {
@@ -175,7 +187,10 @@
   let operationsLoadObserver = null;
   let cloudActionInProgress = false;
   let sharedReceiptReceiveInProgress = false;
-  let pdfJsLibraryPromise = null;
+  let receiptScannerStream = null;
+  let receiptScannerFrameId = null;
+  let receiptScannerBusy = false;
+  let receiptScannerDetector = null;
 
   async function main() {
     enableLiveReload();
@@ -244,7 +259,7 @@
     const isLocalHost = ["localhost", "127.0.0.1", "::1"].includes(location.hostname);
     if (isLocalHost) return;
     if (!("serviceWorker" in navigator)) return;
-    navigator.serviceWorker.register("sw.js?v=148").then((registration) => registration.update()).catch(() => {});
+    navigator.serviceWorker.register("sw.js?v=149").then((registration) => registration.update()).catch(() => {});
   }
 
   async function receiveSharedReceiptsFromShareTarget() {
@@ -313,8 +328,8 @@
     const fallbackId = `shared-${Date.now()}-${index}`;
     const name = String(receipt?.name || `Чек ${index + 1}`);
     try {
-      const rawQr = await decodeQrFromReceiptFile(receipt?.file, name);
-      const parsedReceipt = parseReceiptQr(rawQr);
+      const rawQr = await decodeReceiptQrFromFile(receipt?.file, name);
+      const parsedReceipt = parseReceiptQrFromValue(rawQr);
       return {
         id: String(receipt?.id || fallbackId),
         name,
@@ -332,112 +347,6 @@
         error: error?.message || "не удалось распознать QR-код",
       };
     }
-  }
-
-  async function decodeQrFromReceiptFile(file, name) {
-    if (isPdfReceiptFile(file, name)) return decodeQrFromReceiptPdf(file);
-    return decodeQrFromReceiptImage(file);
-  }
-
-  function isPdfReceiptFile(file, name) {
-    return String(file?.type || "").toLowerCase() === "application/pdf" || /\.pdf$/i.test(String(name || file?.name || ""));
-  }
-
-  function createQrDetector() {
-    const Detector = globalThis.BarcodeDetector;
-    if (typeof Detector !== "function") {
-      throw new Error("в этом браузере нет распознавания QR из изображения");
-    }
-    try {
-      return new Detector({ formats: ["qr_code"] });
-    } catch {
-      return new Detector();
-    }
-  }
-
-  async function detectQrFromSource(source, detector = createQrDetector()) {
-    const codes = await detector.detect(source);
-    const rawValue = codes.find((code) => String(code?.rawValue || "").trim())?.rawValue;
-    return rawValue ? String(rawValue).trim() : "";
-  }
-
-  async function decodeQrFromReceiptImage(file) {
-    if (!file || typeof file !== "object") throw new Error("файл изображения не получен");
-    const image = await createImageBitmap(file);
-    try {
-      const rawValue = await detectQrFromSource(image);
-      if (!rawValue) throw new Error("QR-код на изображении не найден");
-      return rawValue;
-    } finally {
-      image.close?.();
-    }
-  }
-
-  async function decodeQrFromReceiptPdf(file) {
-    if (!file || typeof file.arrayBuffer !== "function") throw new Error("PDF-файл не получен");
-    const pdfjs = await getPdfJsLibrary();
-    const loadingTask = pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) });
-    const pdf = await loadingTask.promise;
-    const detector = createQrDetector();
-
-    try {
-      const pageLimit = Math.min(pdf.numPages, 12);
-      for (let pageNumber = 1; pageNumber <= pageLimit; pageNumber += 1) {
-        const page = await pdf.getPage(pageNumber);
-        const baseViewport = page.getViewport({ scale: 2.5 });
-        const scale = Math.min(1, 2400 / Math.max(baseViewport.width, baseViewport.height));
-        const viewport = page.getViewport({ scale: 2.5 * scale });
-        const canvas = document.createElement("canvas");
-        canvas.width = Math.ceil(viewport.width);
-        canvas.height = Math.ceil(viewport.height);
-        const context = canvas.getContext("2d", { alpha: false });
-        if (!context) throw new Error("не удалось подготовить страницу PDF");
-        await page.render({ canvasContext: context, viewport }).promise;
-        const rawValue = await detectQrFromSource(canvas, detector);
-        page.cleanup();
-        if (rawValue) return rawValue;
-      }
-      throw new Error("QR-код не найден на первых 12 страницах PDF");
-    } finally {
-      await loadingTask.destroy();
-    }
-  }
-
-  function getPdfJsLibrary() {
-    if (!pdfJsLibraryPromise) {
-      pdfJsLibraryPromise = import("./vendor/pdfjs/pdf.min.mjs").then((pdfjs) => {
-        pdfjs.GlobalWorkerOptions.workerSrc = new URL("vendor/pdfjs/pdf.worker.min.mjs", window.location.href).href;
-        return pdfjs;
-      });
-    }
-    return pdfJsLibraryPromise;
-  }
-
-  function parseReceiptQr(rawQr) {
-    const source = String(rawQr || "").trim();
-    const queryText = source.includes("?") ? source.slice(source.indexOf("?") + 1) : source;
-    const params = new URLSearchParams(queryText);
-    const amount = Number(String(params.get("s") || "").replace(",", "."));
-    const operationDate = parseReceiptQrDate(params.get("t"));
-    if (!Number.isFinite(amount) || amount <= 0) throw new Error("в QR нет корректной суммы чека");
-    if (!operationDate) throw new Error("в QR нет корректной даты чека");
-
-    return {
-      amount: round2(amount),
-      operationDate,
-      fiscalNumber: String(params.get("fn") || "").trim(),
-      fiscalDocument: String(params.get("i") || "").trim(),
-    };
-  }
-
-  function parseReceiptQrDate(value) {
-    const match = String(value || "").match(/^(\d{4})(\d{2})(\d{2})T?(\d{2})(\d{2})(\d{2})?$/);
-    if (!match) return "";
-    const [, year, month, day, hour, minute, second = "0"] = match;
-    const date = new Date(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute), Number(second));
-    if (Number.isNaN(date.getTime())) return "";
-    if (date.getFullYear() !== Number(year) || date.getMonth() !== Number(month) - 1 || date.getDate() !== Number(day)) return "";
-    return dateToDateOnlyString(date);
   }
 
   function renderSharedReceiptQueue() {
@@ -491,6 +400,84 @@
     if (elements.descriptionInput) elements.descriptionInput.value = "";
     setQuickAddDate(normalizeDateForInput(receipt.operationDate));
     elements.form?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
+  async function onReceiptScanToggle() {
+    if (state.syncSettings.accessMode === "reader") return;
+    if (!elements.receiptScannerCard || !elements.receiptScannerVideo) return;
+
+    if (!elements.receiptScannerCard.hidden) {
+      closeReceiptScanner();
+      return;
+    }
+
+    elements.receiptScannerCard.hidden = false;
+    if (!navigator.mediaDevices?.getUserMedia) {
+      elements.receiptScannerStatus.textContent = "Камера недоступна в этом браузере.";
+      return;
+    }
+
+    try {
+      receiptScannerDetector = createReceiptQrDetector();
+      elements.receiptScannerStatus.textContent = "Запрашиваю доступ к камере...";
+      receiptScannerStream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: { facingMode: { ideal: "environment" } },
+      });
+      elements.receiptScannerVideo.srcObject = receiptScannerStream;
+      await elements.receiptScannerVideo.play();
+      elements.receiptScannerStatus.textContent = "Наведите камеру на QR-код чека.";
+      scanReceiptCameraFrame();
+    } catch (error) {
+      elements.receiptScannerStatus.textContent = `Не удалось открыть сканер: ${error?.message || "нет доступа к камере"}.`;
+      closeReceiptScanner({ keepMessage: true });
+    }
+  }
+
+  async function scanReceiptCameraFrame() {
+    const video = elements.receiptScannerVideo;
+    if (!receiptScannerStream || !video || elements.receiptScannerCard?.hidden) return;
+
+    if (!receiptScannerBusy && video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+      receiptScannerBusy = true;
+      try {
+        const rawQr = await detectReceiptQrFromSource(video, receiptScannerDetector);
+        if (rawQr) {
+          const parsedReceipt = parseReceiptQrFromValue(rawQr);
+          state.sharedReceiptDrafts.unshift({
+            id: `scan-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+            name: "Сканированный чек",
+            status: "ready",
+            ...parsedReceipt,
+          });
+          closeReceiptScanner();
+          renderSharedReceiptQueue();
+          elements.sharedReceiptsCard?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+          return;
+        }
+      } catch {
+        // A non-receipt QR or a failed frame must not interrupt camera scanning.
+      } finally {
+        receiptScannerBusy = false;
+      }
+    }
+
+    if (receiptScannerStream) receiptScannerFrameId = requestAnimationFrame(scanReceiptCameraFrame);
+  }
+
+  function closeReceiptScanner({ keepMessage = false } = {}) {
+    if (receiptScannerFrameId) cancelAnimationFrame(receiptScannerFrameId);
+    receiptScannerFrameId = null;
+    receiptScannerBusy = false;
+    receiptScannerStream?.getTracks().forEach((track) => track.stop());
+    receiptScannerStream = null;
+    receiptScannerDetector = null;
+
+    if (elements.receiptScannerVideo) {
+      elements.receiptScannerVideo.pause();
+      elements.receiptScannerVideo.srcObject = null;
+    }
+    if (elements.receiptScannerCard) elements.receiptScannerCard.hidden = keepMessage ? false : true;
   }
 
   function bindEvents() {
@@ -551,6 +538,8 @@
     elements.amountsVisibilityToggleButton?.addEventListener("click", onAmountsVisibilityToggle);
     elements.quickAddToggleButton?.addEventListener("click", onQuickAddToggle);
     elements.sharedReceiptsList?.addEventListener("click", onSharedReceiptQueueClick);
+    elements.receiptScanToggleButton?.addEventListener("click", onReceiptScanToggle);
+    elements.receiptScannerCloseButton?.addEventListener("click", closeReceiptScanner);
     navigator.serviceWorker?.addEventListener("message", (event) => {
       if (event.data?.type === "moneyflow:shared-receipts-ready") receiveSharedReceiptsFromShareTarget();
     });
