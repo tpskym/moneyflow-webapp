@@ -1,12 +1,12 @@
-const CACHE_NAME = "moneyflow-v185";
+const CACHE_NAME = "moneyflow-v186";
 const SHARED_RECEIPTS_DB = "moneyflow-shared-receipts-v1";
 const SHARED_RECEIPTS_STORE = "receipts";
 const ASSETS = [
   "./",
   "./index.html",
-  "./styles.css?v=185",
-  "./vendor/jsqr/jsQR.js?v=185",
-  "./app.js?v=185",
+  "./styles.css?v=186",
+  "./vendor/jsqr/jsQR.js?v=186",
+  "./app.js?v=186",
   "./modules/receipt-parser.js",
   "./modules/receipt-scanner.js",
   "./modules/dates.js",
@@ -30,7 +30,7 @@ const ASSETS = [
   "./modules/data-actions-controller.js",
   "./modules/cloud-controller.js",
   "./modules/reader-access-controller.js",
-  "./manifest.webmanifest?v=185",
+  "./manifest.webmanifest?v=186",
   "./icons/moneyflow.svg",
   "./vendor/pdfjs/pdf.min.mjs",
   "./vendor/pdfjs/pdf.worker.min.mjs",
@@ -51,16 +51,15 @@ self.addEventListener("install", (event) => {
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    Promise.all([
-      caches.keys().then((keys) =>
+    caches.keys()
+      .then((keys) =>
         Promise.all(
           keys
             .filter((key) => key !== CACHE_NAME)
             .map((key) => caches.delete(key))
         )
-      ),
-      self.clients.claim(),
-    ])
+      )
+      .then(() => self.clients.claim())
   );
 });
 
@@ -221,8 +220,10 @@ function isAppUpdateCheckRequest(request) {
 }
 
 function cacheFirst(request) {
-  return caches.match(request, { ignoreSearch: true }).then(
-    (cached) => cached || fetchAndCache(request),
+  return caches.open(CACHE_NAME).then((cache) =>
+    cache.match(request, { ignoreSearch: true }).then(
+      (cached) => cached || fetchAndCache(request),
+    ),
   );
 }
 

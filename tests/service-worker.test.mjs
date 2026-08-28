@@ -28,7 +28,7 @@ test("Share Target использует отдельный POST endpoint", async
     },
   };
   vm.runInNewContext(
-    `${source}\nglobalThis.__isReceiptShareRequest = isReceiptShareRequest; globalThis.__isAppUpdateCheckRequest = isAppUpdateCheckRequest;`,
+    `${source}\nglobalThis.__isReceiptShareRequest = isReceiptShareRequest; globalThis.__isAppUpdateCheckRequest = isAppUpdateCheckRequest; globalThis.__cacheFirst = cacheFirst;`,
     context,
   );
 
@@ -50,4 +50,15 @@ test("Share Target использует отдельный POST endpoint", async
     ),
     false,
   );
+
+  let openedCache = "";
+  context.caches.open = async (name) => {
+    openedCache = name;
+    return { match: async () => new Response("cached") };
+  };
+  const cachedResponse = await context.__cacheFirst(
+    new Request("https://example.test/moneyflow/app.js?v=186"),
+  );
+  assert.equal(await cachedResponse.text(), "cached");
+  assert.equal(openedCache, "moneyflow-v186");
 });
