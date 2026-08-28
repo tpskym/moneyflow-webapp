@@ -28,7 +28,7 @@ test("Share Target использует отдельный POST endpoint", async
     },
   };
   vm.runInNewContext(
-    `${source}\nglobalThis.__isReceiptShareRequest = isReceiptShareRequest;`,
+    `${source}\nglobalThis.__isReceiptShareRequest = isReceiptShareRequest; globalThis.__isAppUpdateCheckRequest = isAppUpdateCheckRequest;`,
     context,
   );
 
@@ -38,4 +38,16 @@ test("Share Target использует отдельный POST endpoint", async
   );
 
   assert.equal(context.__isReceiptShareRequest(request), true);
+  assert.equal(
+    context.__isAppUpdateCheckRequest(
+      new Request("https://example.test/moneyflow/index.html?update-check=1"),
+    ),
+    true,
+  );
+  assert.equal(
+    context.__isAppUpdateCheckRequest(
+      new Request("https://example.test/moneyflow/index.html"),
+    ),
+    false,
+  );
 });

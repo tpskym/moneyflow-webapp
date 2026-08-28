@@ -135,7 +135,7 @@ import { createAppUpdateController } from "./modules/app-update.js";
   const appUiController = createAppUiController(context);
   const filterController = createFilterController(context);
   const receiptShareController = createReceiptShareController(context);
-  const appUpdateController = createAppUpdateController({ currentVersion: 184 });
+  const appUpdateController = createAppUpdateController({ currentVersion: 185 });
   const operationsListController = createOperationsListController({
     operationsList: elements.operationsList,
     getAccessMode: () => state.syncSettings.accessMode,
@@ -427,7 +427,7 @@ import { createAppUpdateController } from "./modules/app-update.js";
       window.location.reload();
     });
     navigator.serviceWorker
-      .register("sw.js?v=184", { updateViaCache: "none" })
+      .register("sw.js?v=185", { updateViaCache: "none" })
       .then((registration) => registration.update())
       .catch(() => {});
   }

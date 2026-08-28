@@ -1,12 +1,12 @@
-const CACHE_NAME = "moneyflow-v184";
+const CACHE_NAME = "moneyflow-v185";
 const SHARED_RECEIPTS_DB = "moneyflow-shared-receipts-v1";
 const SHARED_RECEIPTS_STORE = "receipts";
 const ASSETS = [
   "./",
   "./index.html",
-  "./styles.css?v=184",
-  "./vendor/jsqr/jsQR.js?v=184",
-  "./app.js?v=184",
+  "./styles.css?v=185",
+  "./vendor/jsqr/jsQR.js?v=185",
+  "./app.js?v=185",
   "./modules/receipt-parser.js",
   "./modules/receipt-scanner.js",
   "./modules/dates.js",
@@ -30,7 +30,7 @@ const ASSETS = [
   "./modules/data-actions-controller.js",
   "./modules/cloud-controller.js",
   "./modules/reader-access-controller.js",
-  "./manifest.webmanifest?v=184",
+  "./manifest.webmanifest?v=185",
   "./icons/moneyflow.svg",
   "./vendor/pdfjs/pdf.min.mjs",
   "./vendor/pdfjs/pdf.worker.min.mjs",
@@ -76,7 +76,11 @@ self.addEventListener("fetch", (event) => {
   if (requestUrl.origin !== scope.origin) return;
 
   if (isAppShellRequest(event.request)) {
-    event.respondWith(fetchAndCache(event.request));
+    event.respondWith(
+      isAppUpdateCheckRequest(event.request)
+        ? fetchAndCache(event.request)
+        : cacheFirst(event.request),
+    );
     return;
   }
 
@@ -210,6 +214,16 @@ function isAppShellRequest(request) {
   return ["", "index.html", "app.js", "styles.css", "manifest.webmanifest"].includes(relativePath)
     || relativePath.startsWith("modules/")
     || relativePath.startsWith("vendor/");
+}
+
+function isAppUpdateCheckRequest(request) {
+  return new URL(request.url).searchParams.has("update-check");
+}
+
+function cacheFirst(request) {
+  return caches.match(request, { ignoreSearch: true }).then(
+    (cached) => cached || fetchAndCache(request),
+  );
 }
 
 function fetchAndCache(request) {
