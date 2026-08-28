@@ -4,6 +4,7 @@
     categories: "moneyflow-categories-v1",
     syncSettings: "moneyflow-sync-settings-v1",
     amountsHidden: "moneyflow-amounts-hidden-v1",
+    pendingCloudChanges: "moneyflow-pending-cloud-changes-v1",
     cloudPassphrase: "moneyflow-cloud-passphrase-v1",
     cloudEncryptionKey: "moneyflow-cloud-encryption-key-v1",
     cloudEncryptionSalt: "moneyflow-cloud-encryption-salt-v1",
@@ -137,6 +138,8 @@
     cloudPassphrase: "",
     cloudEncryptionKey: "",
     cloudEncryptionSalt: "",
+    hasPendingCloudChanges: false,
+    pendingUploadOperationIds: new Set(),
     searchText: "",
     activeTypeFilter: "all",
     activeYearFilter: new Set(),
@@ -175,6 +178,13 @@
     state.categories = sanitizeCategories(readJson(STORAGE_KEYS.categories, DEFAULT_CATEGORIES));
     state.syncSettings = sanitizeSyncSettings(readJson(STORAGE_KEYS.syncSettings, state.syncSettings));
     state.amountsHidden = readJson(STORAGE_KEYS.amountsHidden, false) === true;
+    const pendingCloudChanges = readJson(STORAGE_KEYS.pendingCloudChanges, {});
+    state.pendingUploadOperationIds = new Set(
+      Array.isArray(pendingCloudChanges?.operationIds)
+        ? pendingCloudChanges.operationIds.map((id) => String(id || "").trim()).filter(Boolean)
+        : [],
+    );
+    state.hasPendingCloudChanges = pendingCloudChanges?.hasChanges === true || state.pendingUploadOperationIds.size > 0;
     state.cloudPassphrase = localStorage.getItem(STORAGE_KEYS.cloudPassphrase) || "";
     state.cloudEncryptionKey = getStoredCloudEncryptionKey();
     state.cloudEncryptionSalt = getStoredCloudEncryptionSalt();
@@ -228,7 +238,7 @@
     if (isLocalHost) return;
     if (!("serviceWorker" in navigator)) return;
     window.addEventListener("load", () => {
-      navigator.serviceWorker.register("sw.js?v=142").then((registration) => registration.update()).catch(() => {});
+      navigator.serviceWorker.register("sw.js?v=143").then((registration) => registration.update()).catch(() => {});
     });
   }
 
@@ -584,6 +594,9 @@
 
     state.operations = [];
     state.categories = [];
+    state.hasPendingCloudChanges = false;
+    state.pendingUploadOperationIds.clear();
+    localStorage.removeItem(STORAGE_KEYS.pendingCloudChanges);
     state.cloudPassphrase = "";
     localStorage.removeItem(STORAGE_KEYS.cloudPassphrase);
     if (elements.cloudPassphraseInput) elements.cloudPassphraseInput.value = "";
@@ -681,6 +694,7 @@
       if (elements.dateToInput) elements.dateToInput.value = "";
       writeJson(STORAGE_KEYS.operations, state.operations);
       writeJson(STORAGE_KEYS.categories, state.categories);
+      markPendingCloudChanges(state.operations.map((operation) => operation.id));
       renderCategoryOptions();
       render();
       const message = `Загружено: ${state.operations.length} операций, ${state.categories.length} категорий.`;
@@ -997,6 +1011,7 @@
     const operationFromForm = getOperationFromForm();
     if (!operationFromForm) return;
 
+    let persistedOperationId = operationFromForm.id;
     if (state.quickAddMode === "edit" && state.quickAddSourceOperationId) {
       const sourceIndex = state.operations.findIndex((item) => item.id === state.quickAddSourceOperationId);
       if (sourceIndex >= 0) {
@@ -1007,6 +1022,7 @@
           createdAt: sourceOperation.createdAt,
           localAddedAt: sourceOperation.localAddedAt,
         };
+        persistedOperationId = sourceOperation.id;
       } else {
         state.operations.push(operationFromForm);
       }
@@ -1014,6 +1030,7 @@
       state.operations.push(operationFromForm);
     }
     writeJson(STORAGE_KEYS.operations, state.operations);
+    markPendingCloudChanges([persistedOperationId]);
 
     resetQuickAddFormToDefaults();
     setQuickAddDate(getTodayInputDate());
@@ -1329,8 +1346,48 @@
   function removeOperation(operationId) {
     state.operations = state.operations.filter((operation) => operation.id !== operationId);
     writeJson(STORAGE_KEYS.operations, state.operations);
+    markPendingCloudChanges();
     state.currentPage = 1;
     render();
+  }
+
+  function markPendingCloudChanges(operationIds = []) {
+    if (state.syncSettings.accessMode === "reader") return;
+    state.hasPendingCloudChanges = true;
+    for (const operationId of operationIds) {
+      const normalizedId = String(operationId || "").trim();
+      if (normalizedId) state.pendingUploadOperationIds.add(normalizedId);
+    }
+    persistPendingCloudChanges();
+    updatePendingCloudChangesUI();
+  }
+
+  function clearPendingCloudChanges() {
+    state.hasPendingCloudChanges = false;
+    state.pendingUploadOperationIds.clear();
+    if (state.syncSettings.accessMode === "reader") {
+      localStorage.removeItem(STORAGE_KEYS.pendingCloudChanges);
+    } else {
+      persistPendingCloudChanges();
+    }
+    updatePendingCloudChangesUI();
+  }
+
+  function persistPendingCloudChanges() {
+    writeJson(STORAGE_KEYS.pendingCloudChanges, {
+      hasChanges: state.hasPendingCloudChanges,
+      operationIds: [...state.pendingUploadOperationIds],
+    });
+  }
+
+  function updatePendingCloudChangesUI() {
+    const hasPendingChanges = state.syncSettings.accessMode !== "reader" && state.hasPendingCloudChanges;
+    [elements.cloudUploadTopButton, elements.cloudUploadButton].filter(Boolean).forEach((button) => {
+      button.classList.toggle("has-pending-cloud-changes", hasPendingChanges);
+      button.title = hasPendingChanges
+        ? "Выгрузить в облако: есть невыгруженные изменения"
+        : "Выгрузить в облако";
+    });
   }
 
   function setOperationCategoryForQuickAdd(categoryId, fallbackName) {
@@ -1635,6 +1692,7 @@
   }
 
   function render() {
+    updatePendingCloudChangesUI();
     const enrichedOps = enrichOperationsWithBalance(state.operations);
     const yearFiltered = getOperationsByYear(enrichedOps);
     const filtered = getFilteredOperations(yearFiltered);
@@ -2045,6 +2103,7 @@
       const description = operation.description || "";
       const menuActionLabel = `Действия для операции "${escapeHtml(category)}"`;
       const isReaderDevice = state.syncSettings.accessMode === "reader";
+      const isPendingUpload = !isReaderDevice && state.pendingUploadOperationIds.has(operation.id);
 
       if (dayLabel !== lastDay) {
         rows.push(`<div class="operation-day">${escapeHtml(dayLabel)}</div>`);
@@ -2075,7 +2134,7 @@
             </div>
           `}
           <div class="operation-title">
-            <div class="operation-category"><strong>${escapeHtml(category)}</strong></div>
+            <div class="operation-category"><strong>${escapeHtml(category)}</strong>${isPendingUpload ? `<span class="operation-pending-upload" title="Не выгружено в облако" aria-label="Не выгружено в облако" role="img"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.2 18.4h10a3.8 3.8 0 0 0 .6-7.55A5.7 5.7 0 0 0 7.1 9.3 4.55 4.55 0 0 0 7.2 18.4Z"/><path d="M12 16V7.8M8.9 10.9 12 7.8l3.1 3.1"/></svg></span>` : ""}</div>
             ${description ? `<div class="operation-description">${escapeHtml(description)}</div>` : ""}
           </div>
           <div class="operation-amount ${amountClass}">
@@ -2869,6 +2928,7 @@
       renderSyncSettingsForm();
       updateCloudAccessUI();
       renderLastSuccessfulSync();
+      clearPendingCloudChanges();
       setSyncStatus("Зашифрованный файл успешно выгружен в Google Drive.");
       showAppNotice("Данные успешно выгружены в облако.");
     } catch (error) {
@@ -2941,6 +3001,7 @@
       state.syncSettings.lastSuccessfulSyncAt = new Date().toISOString();
       await persistSyncSettings();
       renderLastSuccessfulSync();
+      clearPendingCloudChanges();
       refreshReaderConnectionLink({ notify: false });
       setSyncStatus("Данные из облака загружены. Локальные операции и категории заменены.");
       showAppNotice(state.syncSettings.accessMode === "reader"
@@ -3323,6 +3384,7 @@
 
     state.categories.push(category);
     writeJson(STORAGE_KEYS.categories, state.categories);
+    markPendingCloudChanges();
     return category;
   }
 

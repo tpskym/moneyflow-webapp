@@ -104,6 +104,24 @@ body {
   line-height: 1.15;
 }
 
+.sync-button-with-icon.has-pending-cloud-changes {
+  position: relative;
+  border-color: rgba(250, 204, 21, 0.72);
+}
+
+.sync-button-with-icon.has-pending-cloud-changes:not(.is-loading)::after {
+  content: "";
+  position: absolute;
+  top: 7px;
+  right: 8px;
+  width: 8px;
+  height: 8px;
+  border: 2px solid #334155;
+  border-radius: 50%;
+  background: #facc15;
+  box-shadow: 0 0 10px rgba(250, 204, 21, 0.72);
+}
+
 .btn.is-loading {
   gap: 10px;
   color: #ffffff;
@@ -1285,6 +1303,33 @@ textarea:focus-visible {
 
 .operation-category {
   order: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.operation-pending-upload {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  border: 1px solid rgba(250, 204, 21, 0.55);
+  border-radius: 50%;
+  color: #facc15;
+  background: rgba(250, 204, 21, 0.1);
+  box-shadow: 0 0 12px rgba(250, 204, 21, 0.12);
+}
+
+.operation-pending-upload svg {
+  width: 13px;
+  height: 13px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.1;
 }
 
 .operation-title div {
