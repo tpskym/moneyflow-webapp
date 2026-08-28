@@ -81,9 +81,45 @@ function defaultCreateCanvas(width, height) {
 }
 
 export async function detectQrFromSource(source, detector = createQrDetector()) {
+  return (await detectQrsFromSource(source, detector))[0] || "";
+}
+
+export async function detectQrsFromSource(source, detector = createQrDetector()) {
   const codes = await detector.detect(source);
-  const rawValue = codes.find((code) => String(code?.rawValue || "").trim())?.rawValue;
-  return rawValue ? String(rawValue).trim() : "";
+  return [...new Set(
+    codes
+      .map((code) => String(code?.rawValue || "").trim())
+      .filter(Boolean),
+  )];
+}
+
+export function combineReceiptQrs(rawValues) {
+  const receipts = new Map();
+  for (const rawValue of rawValues || []) {
+    const raw = String(rawValue || "").trim();
+    if (!raw) continue;
+    try {
+      const parsed = parseReceiptQr(raw);
+      const fiscalKey = parsed.fiscalNumber && parsed.fiscalDocument
+        ? `${parsed.fiscalNumber}:${parsed.fiscalDocument}`
+        : raw;
+      if (!receipts.has(fiscalKey)) receipts.set(fiscalKey, { raw, parsed });
+    } catch {
+      // A PDF may contain unrelated QR codes; only fiscal receipt QR codes count.
+    }
+  }
+  const uniqueReceipts = [...receipts.values()];
+  if (!uniqueReceipts.length) return "";
+  if (uniqueReceipts.length === 1) return uniqueReceipts[0].raw;
+
+  const amount = Math.round(
+    (uniqueReceipts.reduce((sum, receipt) => sum + receipt.parsed.amount, 0) + Number.EPSILON) * 100,
+  ) / 100;
+  const operationDate = uniqueReceipts
+    .map((receipt) => receipt.parsed.operationDate)
+    .sort()
+    .at(-1);
+  return `t=${operationDate.replaceAll("-", "")}T000000&s=${amount.toFixed(2)}`;
 }
 
 export async function decodeReceiptQrFromFile(file, name) {
@@ -115,8 +151,8 @@ async function decodeQrFromReceiptPdf(file) {
   const detector = createQrDetector();
 
   try {
-    const pageLimit = Math.min(pdf.numPages, 12);
-    for (let pageNumber = 1; pageNumber <= pageLimit; pageNumber += 1) {
+    const rawValues = [];
+    for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
       const page = await pdf.getPage(pageNumber);
       const baseViewport = page.getViewport({ scale: 2.5 });
       const scale = Math.min(1, 2400 / Math.max(baseViewport.width, baseViewport.height));
@@ -127,11 +163,13 @@ async function decodeQrFromReceiptPdf(file) {
       const context = canvas.getContext("2d", { alpha: false });
       if (!context) throw new Error("не удалось подготовить страницу PDF");
       await page.render({ canvasContext: context, viewport }).promise;
-      const rawValue = await detectQrFromSource(canvas, detector);
+      const pageValues = await detectQrsFromSource(canvas, detector);
       page.cleanup();
-      if (rawValue) return rawValue;
+      rawValues.push(...pageValues);
     }
-    throw new Error("QR-код не найден на первых 12 страницах PDF");
+    const combinedQr = combineReceiptQrs(rawValues);
+    if (combinedQr) return combinedQr;
+    throw new Error("QR-коды чеков в PDF не найдены");
   } finally {
     await loadingTask.destroy();
   }

@@ -1,7 +1,24 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { parseReceiptQr, parseReceiptQrDate } from "../modules/receipt-parser.js";
+import {
+  combineReceiptQrs,
+  parseReceiptQr,
+  parseReceiptQrDate,
+} from "../modules/receipt-parser.js";
+
+test("суммирует все уникальные чеки из PDF и берёт последнюю дату", () => {
+  const first = "t=20260820T120000&s=100.25&fn=10&i=1";
+  const second = "t=20260822T130000&s=250.40&fn=10&i=2";
+  const combined = combineReceiptQrs([first, second, first, "https://example.test/not-a-receipt"]);
+
+  assert.deepEqual(parseReceiptQr(combined), {
+    amount: 350.65,
+    operationDate: "2026-08-22",
+    fiscalNumber: "",
+    fiscalDocument: "",
+  });
+});
 
 test("разбирает QR ФНС из адреса и переносит сумму, дату и фискальные поля", () => {
   const receipt = parseReceiptQr("https://proverkacheka.nalog.ru/?t=20260828T143015&s=1%20234.56&fn=1234567890123456&i=4567");

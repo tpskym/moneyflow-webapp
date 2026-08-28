@@ -8,7 +8,7 @@ test("Share Target использует отдельный POST endpoint без 
     await readFile(new URL("../manifest.webmanifest", import.meta.url), "utf8"),
   );
   assert.equal(manifest.share_target.action, "./receive-check/");
-  assert.equal(manifest.launch_handler.client_mode, "navigate-existing");
+  assert.equal(manifest.launch_handler.client_mode, "focus-existing");
 
   const source = await readFile(new URL("../sw.js", import.meta.url), "utf8");
   const context = {

@@ -6,6 +6,10 @@ import {
 } from "./receipt-parser.js";
 import { createReceiptScanner } from "./receipt-scanner.js";
 
+export function bindShareLaunchQueue(launchQueue, receive) {
+  launchQueue?.setConsumer?.(() => receive());
+}
+
 export async function createSharedReceiptDraft(
   receipt,
   index,
@@ -223,6 +227,7 @@ export function createReceiptShareController(context) {
         window.setTimeout(receiveFromShareTarget, delay),
       );
     };
+    bindShareLaunchQueue(window.launchQueue, scheduleReceive);
     elements.sharedReceiptsList?.addEventListener("click", onQueueClick);
     elements.receiptScanToggleButton?.addEventListener("click", () =>
       getScanner().toggle(),
