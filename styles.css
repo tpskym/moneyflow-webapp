@@ -957,8 +957,8 @@ textarea:focus-visible {
 }
 
 .type-filter-chip.is-active {
-  box-shadow: 0 0 0 2px rgba(103, 232, 249, 0.42), 0 8px 18px rgba(6, 182, 212, 0.28);
-  transform: translateY(-1px);
+  box-shadow: inset 0 0 0 2px rgba(8, 47, 73, 0.38);
+  transform: none;
 }
 
 .chip:disabled {

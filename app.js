@@ -424,7 +424,7 @@ import { isValidEncryptionKey } from "./modules/cloud-crypto.js";
       window.location.reload();
     });
     navigator.serviceWorker
-      .register("sw.js?v=161")
+      .register("sw.js?v=162")
       .then((registration) => registration.update())
       .catch(() => {});
   }

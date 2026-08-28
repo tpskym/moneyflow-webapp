@@ -9,6 +9,7 @@ export function createReceiptScanner({
   detectQr = detectQrFromSource,
   parseReceipt = parseReceiptQr,
   requestCamera = defaultRequestCamera,
+  cameraRequestTimeoutMs = 8000,
   scheduleFrame = defaultScheduleFrame,
   cancelFrame = defaultCancelFrame,
 } = {}) {
@@ -29,7 +30,10 @@ export function createReceiptScanner({
 
     try {
       detector = createDetector();
-      stream = await requestCamera(getUserMedia);
+      stream = await requestCamera(getUserMedia, {
+        timeoutMs: cameraRequestTimeoutMs,
+        onRetry: () => setStatus("Первый запрос не ответил. Пробую открыть камеру без выбора объектива..."),
+      });
       elements.video.srcObject = stream;
       await elements.video.play();
       setStatus("Наведите камеру на QR-код чека.");
@@ -90,20 +94,45 @@ function defaultGetUserMedia(constraints) {
   return navigator.mediaDevices.getUserMedia(constraints);
 }
 
-async function defaultRequestCamera(getUserMedia) {
+async function defaultRequestCamera(getUserMedia, { timeoutMs = 8000, onRetry = () => {} } = {}) {
   try {
-    return await getUserMedia({
-      audio: false,
-      video: { facingMode: { ideal: "environment" } },
-    });
+    return await getUserMediaWithTimeout(
+      getUserMedia,
+      { audio: false, video: { facingMode: { ideal: "environment" } } },
+      timeoutMs,
+    );
   } catch (error) {
     if (!shouldRetryCamera(error)) throw error;
-    return getUserMedia({ audio: false, video: true });
+    onRetry();
+    return getUserMediaWithTimeout(getUserMedia, { audio: false, video: true }, timeoutMs);
   }
 }
 
+function getUserMediaWithTimeout(getUserMedia, constraints, timeoutMs) {
+  let expired = false;
+  let timer;
+  const request = Promise.resolve()
+    .then(() => getUserMedia(constraints))
+    .then((mediaStream) => {
+      if (!expired) return mediaStream;
+      mediaStream?.getTracks?.().forEach((track) => track.stop());
+      const error = new Error("Android не ответил на запрос камеры");
+      error.name = "TimeoutError";
+      throw error;
+    });
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => {
+      expired = true;
+      const error = new Error("Android не ответил на запрос камеры");
+      error.name = "TimeoutError";
+      reject(error);
+    }, Math.max(1, Number(timeoutMs) || 8000));
+  });
+  return Promise.race([request, timeout]).finally(() => clearTimeout(timer));
+}
+
 function shouldRetryCamera(error) {
-  if (["AbortError", "NotFoundError", "NotReadableError", "OverconstrainedError"].includes(error?.name)) return true;
+  if (["AbortError", "NotFoundError", "NotReadableError", "OverconstrainedError", "TimeoutError"].includes(error?.name)) return true;
   return /could not start (video|camera) (service|source)/i.test(String(error?.message || ""));
 }
 
@@ -113,6 +142,8 @@ function getScannerErrorMessage(error) {
   if (error?.name === "NotReadableError" || /could not start (video|camera) (service|source)/i.test(String(error?.message || "")))
     return "камера занята или отключена системой: закройте приложения с камерой и включите доступ к камере в шторке Android";
   if (error?.name === "NotFoundError") return "камера не найдена";
+  if (error?.name === "TimeoutError")
+    return "Android не показал запрос доступа к камере; разрешите камеру для Chrome в настройках сайта и приложения";
   return error?.message || "нет доступа к камере";
 }
 

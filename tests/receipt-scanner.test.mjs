@@ -116,3 +116,18 @@ test("повторяет запуск камеры при ошибке Android �
 
   assert.equal(constraints.length, 2);
 });
+
+test("не зависает, если Android не отвечает на запрос камеры", async () => {
+  const elements = createElements();
+  const scanner = createReceiptScanner({
+    elements,
+    getUserMedia: () => new Promise(() => {}),
+    createDetector: () => ({ detect: async () => [] }),
+    cameraRequestTimeoutMs: 5,
+  });
+
+  await scanner.toggle();
+
+  assert.equal(elements.card.hidden, false);
+  assert.match(elements.status.textContent, /Android не показал запрос доступа/);
+});
