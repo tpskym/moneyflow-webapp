@@ -38,7 +38,6 @@ import {
   CATEGORY_COLORS,
   createElements,
   createInitialState,
-  CURRENT_YEAR_LOOKBACK,
   DEFAULT_CATEGORIES,
   STORAGE_KEYS,
 } from "./modules/app-config.js";
@@ -112,7 +111,6 @@ import { createAppUpdateController } from "./modules/app-update.js";
   const filtersView = createFiltersView({
     state,
     elements,
-    currentYearLookback: CURRENT_YEAR_LOOKBACK,
     escapeHtml,
     formatMoney,
     getCategoriesForPicker: categoryPickerController.getCategoriesForPicker,
@@ -135,7 +133,7 @@ import { createAppUpdateController } from "./modules/app-update.js";
   const appUiController = createAppUiController(context);
   const filterController = createFilterController(context);
   const receiptShareController = createReceiptShareController(context);
-  const appUpdateController = createAppUpdateController({ currentVersion: 187 });
+  const appUpdateController = createAppUpdateController({ currentVersion: 188 });
   const operationsListController = createOperationsListController({
     operationsList: elements.operationsList,
     getAccessMode: () => state.syncSettings.accessMode,
@@ -427,7 +425,7 @@ import { createAppUpdateController } from "./modules/app-update.js";
       window.location.reload();
     });
     navigator.serviceWorker
-      .register("sw.js?v=187", { updateViaCache: "none" })
+      .register("sw.js?v=188", { updateViaCache: "none" })
       .then((registration) => registration.update())
       .catch(() => {});
   }

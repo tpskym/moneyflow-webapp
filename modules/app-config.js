@@ -24,8 +24,6 @@ export const CATEGORY_COLORS = [
   "#8B5CF6",
   "#EC4899",
 ];
-export const CURRENT_YEAR_LOOKBACK = 5;
-
 export function createInitialState() {
   return {
     operations: [],

@@ -28,7 +28,7 @@ test("Share Target использует отдельный POST endpoint", async
     },
   };
   vm.runInNewContext(
-    `${source}\nglobalThis.__isReceiptShareRequest = isReceiptShareRequest; globalThis.__isAppUpdateCheckRequest = isAppUpdateCheckRequest; globalThis.__cacheFirst = cacheFirst;`,
+    `${source}\nglobalThis.__isReceiptShareRequest = isReceiptShareRequest; globalThis.__isAppUpdateCheckRequest = isAppUpdateCheckRequest; globalThis.__cacheFirst = cacheFirst; globalThis.__cacheName = CACHE_NAME;`,
     context,
   );
 
@@ -60,5 +60,5 @@ test("Share Target использует отдельный POST endpoint", async
     new Request("https://example.test/moneyflow/app.js?v=186"),
   );
   assert.equal(await cachedResponse.text(), "cached");
-  assert.equal(openedCache, "moneyflow-v187");
+  assert.equal(openedCache, context.__cacheName);
 });

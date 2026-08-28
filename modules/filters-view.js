@@ -10,8 +10,22 @@ export function getCategoryChartEntries(operations, type, getCategoryById, getCa
     .sort((left, right) => right.amount - left.amount);
 }
 
+export function getAvailableOperationYears(
+  operations,
+  currentYear = new Date().getFullYear(),
+) {
+  const years = (Array.isArray(operations) ? operations : [])
+    .map((operation) => Number(String(operation?.operationDate || "").slice(0, 4)))
+    .filter((year) => Number.isInteger(year) && year > 0 && year <= currentYear);
+  const earliestYear = years.length ? Math.min(...years) : currentYear;
+  return Array.from(
+    { length: currentYear - earliestYear + 1 },
+    (_, index) => currentYear - index,
+  );
+}
+
 export function createFiltersView({
-  state, elements, currentYearLookback, escapeHtml, formatMoney, getCategoriesForPicker, getCategoryById,
+  state, elements, escapeHtml, formatMoney, getCategoriesForPicker, getCategoryById,
   getCategoryName, loadMoreOperations, round2,
 }) {
   let operationsLoadObserver = null;
@@ -27,7 +41,7 @@ export function createFiltersView({
   }
   function renderYearFilters() {
     if (!elements.yearFilterContainer) return;
-    const years = Array.from({ length: currentYearLookback + 1 }, (_, index) => new Date().getFullYear() - index);
+    const years = getAvailableOperationYears(state.operations);
     const selected = state.activeYearFilter instanceof Set ? state.activeYearFilter : new Set();
     const buttons = [{ value: "all", label: "Все" }, ...years.map((year) => ({ value: String(year), label: String(year) }))];
     if (selected.size && ![...selected].some((year) => years.includes(year))) state.activeYearFilter = new Set();
