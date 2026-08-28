@@ -54,6 +54,7 @@ import { createDataActionsController } from "./modules/data-actions-controller.j
 import { createCloudController } from "./modules/cloud-controller.js";
 import { createReaderAccessController } from "./modules/reader-access-controller.js";
 import { isValidEncryptionKey } from "./modules/cloud-crypto.js";
+import { createAppUpdateController } from "./modules/app-update.js";
 
 (() => {
   const elements = createElements();
@@ -134,6 +135,7 @@ import { isValidEncryptionKey } from "./modules/cloud-crypto.js";
   const appUiController = createAppUiController(context);
   const filterController = createFilterController(context);
   const receiptShareController = createReceiptShareController(context);
+  const appUpdateController = createAppUpdateController({ currentVersion: 182 });
   const operationsListController = createOperationsListController({
     operationsList: elements.operationsList,
     getAccessMode: () => state.syncSettings.accessMode,
@@ -211,6 +213,7 @@ import { isValidEncryptionKey } from "./modules/cloud-crypto.js";
     await receiptShareController.receiveFromShareTarget();
     render();
     registerServiceWorker();
+    appUpdateController.bind();
   }
 
   function registerActions() {
@@ -424,7 +427,7 @@ import { isValidEncryptionKey } from "./modules/cloud-crypto.js";
       window.location.reload();
     });
     navigator.serviceWorker
-      .register("sw.js?v=181", { updateViaCache: "none" })
+      .register("sw.js?v=182", { updateViaCache: "none" })
       .then((registration) => registration.update())
       .catch(() => {});
   }
