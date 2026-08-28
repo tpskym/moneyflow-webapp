@@ -1,12 +1,12 @@
-const CACHE_NAME = "moneyflow-v183";
+const CACHE_NAME = "moneyflow-v184";
 const SHARED_RECEIPTS_DB = "moneyflow-shared-receipts-v1";
 const SHARED_RECEIPTS_STORE = "receipts";
 const ASSETS = [
   "./",
   "./index.html",
-  "./styles.css?v=183",
-  "./vendor/jsqr/jsQR.js?v=183",
-  "./app.js?v=183",
+  "./styles.css?v=184",
+  "./vendor/jsqr/jsQR.js?v=184",
+  "./app.js?v=184",
   "./modules/receipt-parser.js",
   "./modules/receipt-scanner.js",
   "./modules/dates.js",
@@ -30,7 +30,7 @@ const ASSETS = [
   "./modules/data-actions-controller.js",
   "./modules/cloud-controller.js",
   "./modules/reader-access-controller.js",
-  "./manifest.webmanifest?v=183",
+  "./manifest.webmanifest?v=184",
   "./icons/moneyflow.svg",
   "./vendor/pdfjs/pdf.min.mjs",
   "./vendor/pdfjs/pdf.worker.min.mjs",

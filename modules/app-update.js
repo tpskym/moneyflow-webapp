@@ -8,8 +8,6 @@ export function createAppUpdateController({
   fetchImpl = (...args) => globalThis.fetch(...args),
   locationRef = globalThis.location,
   navigatorRef = globalThis.navigator,
-  windowRef = globalThis.window,
-  documentRef = globalThis.document,
   now = Date.now,
 } = {}) {
   let checking = false;
@@ -38,12 +36,7 @@ export function createAppUpdateController({
   }
 
   function bind() {
-    windowRef?.addEventListener?.("pageshow", check);
-    documentRef?.addEventListener?.("visibilitychange", () => {
-      if (documentRef.visibilityState === "visible") check();
-    });
-    windowRef?.setInterval?.(check, 5 * 60 * 1000);
-    check();
+    return check();
   }
 
   return { bind, check };

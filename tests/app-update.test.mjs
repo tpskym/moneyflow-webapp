@@ -49,3 +49,25 @@ test("не перезагружает текущую версию", async () => 
   assert.equal(await controller.check(), false);
   assert.equal(reloads, 0);
 });
+
+test("проверяет обновление один раз при старте без таймеров", async () => {
+  let requests = 0;
+  const controller = createAppUpdateController({
+    currentVersion: 184,
+    locationRef: {
+      href: "https://example.test/moneyflow/",
+      replace() {},
+    },
+    navigatorRef: { onLine: true },
+    fetchImpl: async () => {
+      requests += 1;
+      return {
+        ok: true,
+        async text() { return '<span class="app-version">v184</span>'; },
+      };
+    },
+  });
+
+  await controller.bind();
+  assert.equal(requests, 1);
+});
