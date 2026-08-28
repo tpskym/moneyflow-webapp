@@ -1,12 +1,12 @@
-const CACHE_NAME = "moneyflow-v145";
+const CACHE_NAME = "moneyflow-v146";
 const SHARED_RECEIPTS_DB = "moneyflow-shared-receipts-v1";
 const SHARED_RECEIPTS_STORE = "receipts";
 const ASSETS = [
   "./",
   "./index.html",
-  "./styles.css?v=145",
-  "./app.js?v=145",
-  "./manifest.webmanifest?v=145",
+  "./styles.css?v=146",
+  "./app.js?v=146",
+  "./manifest.webmanifest?v=146",
   "./icons/moneyflow.svg",
 ];
 
@@ -99,8 +99,16 @@ function isReceiptShareRequest(request) {
 async function handleReceiptShare(request) {
   const formData = await request.formData();
   const receipts = formData.getAll("receipts").filter((item) => item && typeof item.arrayBuffer === "function");
-  if (receipts.length) await saveSharedReceipts(receipts);
+  if (receipts.length) {
+    await saveSharedReceipts(receipts);
+    await notifySharedReceiptsAvailable();
+  }
   return Response.redirect(new URL("./?shared-checks=1", self.registration.scope).href, 303);
+}
+
+async function notifySharedReceiptsAvailable() {
+  const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+  clients.forEach((client) => client.postMessage({ type: "moneyflow:shared-receipts-ready" }));
 }
 
 async function saveSharedReceipts(files) {

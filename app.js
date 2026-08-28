@@ -174,6 +174,7 @@
   let ignorePeriodClick = false;
   let operationsLoadObserver = null;
   let cloudActionInProgress = false;
+  let sharedReceiptReceiveInProgress = false;
 
   async function main() {
     enableLiveReload();
@@ -248,24 +249,31 @@
   }
 
   async function receiveSharedReceiptsFromShareTarget() {
+    if (sharedReceiptReceiveInProgress) return;
     const pageUrl = new URL(window.location.href);
-    if (pageUrl.searchParams.get("shared-checks") !== "1") return;
+    const isSharedLaunch = pageUrl.searchParams.get("shared-checks") === "1";
 
-    pageUrl.searchParams.delete("shared-checks");
-    window.history.replaceState({}, "", `${pageUrl.pathname}${pageUrl.search}${pageUrl.hash}`);
+    if (isSharedLaunch) {
+      pageUrl.searchParams.delete("shared-checks");
+      window.history.replaceState({}, "", `${pageUrl.pathname}${pageUrl.search}${pageUrl.hash}`);
+    }
 
     if (!("serviceWorker" in navigator)) {
-      showAppNotice("Приём чеков недоступен: браузер не поддерживает PWA.", "error");
+      if (isSharedLaunch) showAppNotice("Приём чеков недоступен: браузер не поддерживает PWA.", "error");
       return;
     }
 
+    sharedReceiptReceiveInProgress = true;
     try {
       const registration = await navigator.serviceWorker.ready;
       const worker = navigator.serviceWorker.controller || registration.active;
       if (!worker) throw new Error("не удалось получить файлы из системного меню");
 
       const sharedReceipts = await requestSharedReceipts(worker);
-      if (!sharedReceipts.length) throw new Error("картинки чеков не найдены");
+      if (!sharedReceipts.length) {
+        if (isSharedLaunch) throw new Error("картинки чеков не найдены");
+        return;
+      }
 
       state.sharedReceiptDrafts = await Promise.all(
         sharedReceipts.map((receipt, index) => createSharedReceiptDraft(receipt, index)),
@@ -280,6 +288,8 @@
       showAppNotice(message, recognizedCount ? "success" : "error");
     } catch (error) {
       showAppNotice(`Не удалось обработать переданные чеки: ${error?.message || "неизвестная ошибка"}`, "error");
+    } finally {
+      sharedReceiptReceiveInProgress = false;
     }
   }
 
@@ -487,6 +497,9 @@
     elements.amountsVisibilityToggleButton?.addEventListener("click", onAmountsVisibilityToggle);
     elements.quickAddToggleButton?.addEventListener("click", onQuickAddToggle);
     elements.sharedReceiptsList?.addEventListener("click", onSharedReceiptQueueClick);
+    navigator.serviceWorker?.addEventListener("message", (event) => {
+      if (event.data?.type === "moneyflow:shared-receipts-ready") receiveSharedReceiptsFromShareTarget();
+    });
     elements.operationDatePickerInput?.addEventListener("change", onOperationDatePickerChange);
     elements.operationDatePickerInput?.addEventListener("input", onOperationDatePickerChange);
     elements.operationDatePickerButton?.addEventListener("click", () => openNativeDatePicker(elements.operationDatePickerInput));
