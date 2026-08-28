@@ -59,7 +59,7 @@ export function createReceiptShareController(context) {
         ]
           .filter(Boolean)
           .join(" · ");
-        return `<article class="shared-receipt" data-shared-receipt-id="${escape(receipt.id)}"><div><strong>${escape(receipt.name)}</strong><p>${escape(actions.call("formatOperationDate", { operationDate: receipt.operationDate }))} · <b>${escape(actions.call("formatMoney", receipt.amount))} ₽</b></p>${fiscal ? `<small>${escape(fiscal)}</small>` : ""}</div><div class="shared-receipt-actions"><button type="button" class="btn" data-shared-receipt-action="fill">Открыть операцию</button><button type="button" class="btn btn--secondary" data-shared-receipt-action="dismiss" aria-label="Убрать чек">×</button></div></article>`;
+        return `<article class="shared-receipt" data-shared-receipt-id="${escape(receipt.id)}"><div><strong>${escape(receipt.name)}</strong><p>${escape(actions.call("formatOperationDate", { operationDate: receipt.operationDate }))} · <b>${escape(actions.call("formatMoney", receipt.amount))} ₽</b></p>${fiscal ? `<small>${escape(fiscal)}</small>` : ""}</div><div class="shared-receipt-actions"><button type="button" class="btn" data-shared-receipt-action="fill">Создать операцию</button><button type="button" class="btn btn--secondary" data-shared-receipt-action="dismiss" aria-label="Убрать чек">×</button></div></article>`;
       })
       .join("");
   }

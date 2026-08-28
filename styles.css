@@ -1710,7 +1710,9 @@ body.amounts-hidden #category-charts {
 }
 
 .shared-receipt {
+  display: grid;
   grid-template-columns: minmax(0, 1fr) !important;
+  align-items: stretch;
 }
 
 .shared-receipt-actions {

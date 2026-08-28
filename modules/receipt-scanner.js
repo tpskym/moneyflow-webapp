@@ -9,7 +9,6 @@ export function createReceiptScanner({
   detectQr = detectQrFromSource,
   parseReceipt = parseReceiptQr,
   requestCamera = defaultRequestCamera,
-  enumerateDevices = defaultEnumerateDevices,
   cameraWaitingNoticeMs = 8000,
   scheduleFrame = defaultScheduleFrame,
   cancelFrame = defaultCancelFrame,
@@ -32,10 +31,8 @@ export function createReceiptScanner({
     try {
       detector = createDetector();
       stream = await requestCamera(getUserMedia, {
-        enumerateDevices,
         waitingNoticeMs: cameraWaitingNoticeMs,
         onWaiting: () => setStatus("Android всё ещё запускает камеру. Проверьте системное окно разрешения."),
-        onRetry: () => setStatus("Задняя камера недоступна. Пробую открыть доступную камеру..."),
       });
       elements.video.srcObject = stream;
       await elements.video.play();
@@ -97,61 +94,20 @@ function defaultGetUserMedia(constraints) {
   return navigator.mediaDevices.getUserMedia(constraints);
 }
 
-async function defaultRequestCamera(getUserMedia, {
-  enumerateDevices = defaultEnumerateDevices,
-  waitingNoticeMs = 8000,
-  onWaiting = () => {},
-  onRetry = () => {},
-} = {}) {
-  let initialStream;
-  try {
-    initialStream = await getUserMediaWithWaitingNotice(
-      getUserMedia,
-      { audio: false, video: { facingMode: { exact: "environment" } } },
-      waitingNoticeMs,
-      onWaiting,
-    );
-  } catch (error) {
-    if (!shouldRetryCamera(error)) throw error;
-    onRetry();
-    initialStream = await getUserMediaWithWaitingNotice(
-      getUserMedia,
-      { audio: false, video: { facingMode: { ideal: "environment" } } },
-      waitingNoticeMs,
-      onWaiting,
-    );
-  }
-
-  return switchToRearCameraIfNeeded(initialStream, getUserMedia, enumerateDevices, waitingNoticeMs, onWaiting);
-}
-
-async function switchToRearCameraIfNeeded(stream, getUserMedia, enumerateDevices, waitingNoticeMs, onWaiting) {
-  const activeTrack = stream?.getVideoTracks?.()[0];
-  const activeSettings = activeTrack?.getSettings?.() || {};
-
-  let devices;
-  try {
-    devices = await enumerateDevices();
-  } catch {
-    return stream;
-  }
-
-  const rearCamera = devices.find((device) =>
-    device?.kind === "videoinput" && /back|rear|environment|задн|тыл/i.test(String(device.label || "")),
-  );
-  if (!rearCamera?.deviceId || rearCamera.deviceId === activeSettings.deviceId) return stream;
-
-  stream?.getTracks?.().forEach((track) => track.stop());
+function defaultRequestCamera(getUserMedia, { waitingNoticeMs = 8000, onWaiting = () => {} } = {}) {
   return getUserMediaWithWaitingNotice(
     getUserMedia,
-    { audio: false, video: { deviceId: { exact: rearCamera.deviceId } } },
+    {
+      audio: false,
+      video: {
+        facingMode: { ideal: "environment" },
+        width: { ideal: 1920 },
+        height: { ideal: 1080 },
+      },
+    },
     waitingNoticeMs,
     onWaiting,
   );
-}
-
-function defaultEnumerateDevices() {
-  return globalThis.navigator?.mediaDevices?.enumerateDevices?.() || Promise.resolve([]);
 }
 
 function getUserMediaWithWaitingNotice(getUserMedia, constraints, waitingNoticeMs, onWaiting) {
@@ -159,11 +115,6 @@ function getUserMediaWithWaitingNotice(getUserMedia, constraints, waitingNoticeM
   return Promise.resolve()
     .then(() => getUserMedia(constraints))
     .finally(() => clearTimeout(timer));
-}
-
-function shouldRetryCamera(error) {
-  if (["AbortError", "NotFoundError", "NotReadableError", "OverconstrainedError"].includes(error?.name)) return true;
-  return /could not start (video|camera) (service|source)/i.test(String(error?.message || ""));
 }
 
 function getScannerErrorMessage(error) {
