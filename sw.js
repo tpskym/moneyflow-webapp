@@ -1,4 +1,4 @@
-const CACHE_NAME = "moneyflow-v156";
+const CACHE_NAME = "moneyflow-v157";
 const SHARED_RECEIPTS_DB = "moneyflow-shared-receipts-v1";
 const SHARED_RECEIPTS_STORE = "receipts";
 const ASSETS = [
