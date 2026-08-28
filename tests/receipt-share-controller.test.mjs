@@ -72,3 +72,42 @@ test("выводит создание операции и закрытие в о
   assert.match(elements.sharedReceiptsList.innerHTML, /aria-label="Убрать чек">×</);
   assert.doesNotMatch(elements.sharedReceiptsList.innerHTML, /Открыть операцию/);
 });
+
+test("после создания операции закрывает выбранный чек", () => {
+  const elements = {
+    sharedReceiptsCard: { hidden: false },
+    sharedReceiptsCount: { textContent: "1" },
+    sharedReceiptsList: { innerHTML: "" },
+    categorySelect: { value: "category" },
+    categoryPickerInput: { value: "category" },
+    descriptionInput: { value: "description" },
+    form: { scrollIntoView() {} },
+  };
+  const state = {
+    syncSettings: { accessMode: "editor" },
+    sharedReceiptDrafts: [{
+      id: "receipt-1",
+      name: "check.png",
+      status: "ready",
+      amount: 42.5,
+      operationDate: "2026-08-28",
+    }],
+  };
+  const actions = {
+    call(name, value) {
+      if (name === "normalizeDateForInput") return value;
+      return undefined;
+    },
+  };
+  const controller = createReceiptShareController({ elements, state, actions });
+  const button = {
+    dataset: { sharedReceiptAction: "fill" },
+    closest: () => ({ dataset: { sharedReceiptId: "receipt-1" } }),
+  };
+
+  controller.onQueueClick({ target: { closest: () => button } });
+
+  assert.equal(state.sharedReceiptDrafts.length, 0);
+  assert.equal(elements.sharedReceiptsCard.hidden, true);
+  assert.equal(elements.sharedReceiptsCount.textContent, "0");
+});

@@ -183,6 +183,10 @@ export function createReceiptShareController(context) {
       "setQuickAddDate",
       actions.call("normalizeDateForInput", receipt.operationDate),
     );
+    state.sharedReceiptDrafts = state.sharedReceiptDrafts.filter(
+      (item) => item.id !== receipt.id,
+    );
+    renderQueue();
     elements.form?.scrollIntoView({ behavior: "smooth", block: "center" });
   }
   function getScanner() {
@@ -236,5 +240,5 @@ export function createReceiptShareController(context) {
       if (document.visibilityState === "visible") scheduleReceive();
     });
   }
-  return { bind, receiveFromShareTarget, renderQueue };
+  return { bind, onQueueClick, receiveFromShareTarget, renderQueue };
 }
