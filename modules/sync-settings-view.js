@@ -50,6 +50,8 @@ export function createSyncSettingsView({ state, elements, getReaderConnectionLin
       elements.cloudDownloadButton.textContent = access.isReadOnly ? "Синхронизировать" : "Загрузить из облака";
     }
     if (elements.quickAddToggleButton) elements.quickAddToggleButton.hidden = !access.canEdit;
+    if (elements.receiptScanToggleButton) elements.receiptScanToggleButton.hidden = !access.canEdit;
+    if (elements.syncSettingsCloseButton) elements.syncSettingsCloseButton.hidden = !access.isReadOnly;
     if (elements.syncGoogleClientIdField) elements.syncGoogleClientIdField.hidden = access.hasFileId;
     if (elements.readerInvite) elements.readerInvite.hidden = !(access.hasClientId && access.hasFileId && access.isWriter);
     if (elements.readerConnection) elements.readerConnection.hidden = !(access.hasClientId && access.hasFileId && access.isWriter);
@@ -72,6 +74,7 @@ export function createSyncSettingsView({ state, elements, getReaderConnectionLin
     elements.syncEditorTabButton?.addEventListener("click", () => setActiveTab("editor"));
     elements.syncReaderTabButton?.addEventListener("click", () => setActiveTab("reader"));
     elements.instructionsCloseButton?.addEventListener("click", () => updateInstructionsVisibility(false));
+    elements.syncSettingsCloseButton?.addEventListener("click", () => updateSyncSettingsVisibility(false));
   }
   return { bind, setActiveTab, updateCloudAccessUI, updateInstructionsVisibility, updateSyncSettingsVisibility };
 }

@@ -117,6 +117,7 @@ export function createElements(doc = document) {
     categoryFilterContainer: byId("category-filters"),
     syncToggleButton: byId("sync-settings-toggle"),
     syncSettingsCard: byId("sync-settings-section"),
+    syncSettingsCloseButton: byId("sync-settings-close"),
     syncGoogleClientIdField: byId("google-client-id-field"),
     instructionsToggleButton: byId("instructions-toggle"),
     instructionsCard: byId("instructions-section"),

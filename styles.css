@@ -1849,6 +1849,13 @@ body.amounts-hidden #category-charts {
   animation: cloud-action-spin 0.78s linear infinite;
 }
 
+.sync-settings-close {
+  width: 100%;
+  min-height: 52px;
+  margin-top: 20px;
+  justify-content: center;
+}
+
 #instructions-close {
   display: flex;
   width: 100% !important;
