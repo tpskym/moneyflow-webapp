@@ -6,10 +6,6 @@ import {
 } from "./receipt-parser.js";
 import { createReceiptScanner } from "./receipt-scanner.js";
 
-export function bindShareLaunchQueue(launchQueue, receive) {
-  launchQueue?.setConsumer?.((launchParams) => receive(launchParams));
-}
-
 export function setReceiptProcessingState(
   elements,
   visible,
@@ -59,7 +55,6 @@ export async function createSharedReceiptDraft(
 export function createReceiptShareController(context) {
   const { elements, state, actions } = context;
   let receiving = false;
-  let receiveAgain = false;
   let scanner = null;
   const escape = (value) => actions.call("escapeHtml", value);
   function renderQueue() {
@@ -103,10 +98,7 @@ export function createReceiptShareController(context) {
     });
   }
   async function receiveFromShareTarget() {
-    if (receiving) {
-      receiveAgain = true;
-      return;
-    }
+    if (receiving) return;
     const url = new URL(window.location.href);
     const sharedLaunch = url.searchParams.get("shared-checks") === "1";
     if (sharedLaunch) {
@@ -194,10 +186,6 @@ export function createReceiptShareController(context) {
     } finally {
       setReceiptProcessingState(elements, false);
       receiving = false;
-      if (receiveAgain) {
-        receiveAgain = false;
-        window.setTimeout(receiveFromShareTarget, 0);
-      }
     }
   }
   function onQueueClick(event) {
@@ -272,12 +260,6 @@ export function createReceiptShareController(context) {
     return scanner;
   }
   function bind() {
-    const scheduleReceive = () => {
-      [0, 400, 1200, 3000, 7000, 12000].forEach((delay) =>
-        window.setTimeout(receiveFromShareTarget, delay),
-      );
-    };
-    bindShareLaunchQueue(window.launchQueue, scheduleReceive);
     elements.sharedReceiptsList?.addEventListener("click", onQueueClick);
     elements.receiptScanToggleButton?.addEventListener("click", () =>
       getScanner().toggle(),
@@ -285,18 +267,6 @@ export function createReceiptShareController(context) {
     elements.receiptScannerCloseButton?.addEventListener("click", () =>
       scanner?.close(),
     );
-    navigator.serviceWorker?.addEventListener("message", (event) => {
-      if (event.data?.type === "moneyflow:shared-receipts-ready")
-        scheduleReceive();
-    });
-    window.addEventListener("focus", scheduleReceive);
-    window.addEventListener("pageshow", scheduleReceive);
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible") scheduleReceive();
-    });
-    window.setInterval(() => {
-      if (document.visibilityState === "visible") receiveFromShareTarget();
-    }, 2500);
   }
   return { bind, onQueueClick, receiveFromShareTarget, renderQueue };
 }

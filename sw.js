@@ -1,12 +1,12 @@
-const CACHE_NAME = "moneyflow-v178";
+const CACHE_NAME = "moneyflow-v179";
 const SHARED_RECEIPTS_DB = "moneyflow-shared-receipts-v1";
 const SHARED_RECEIPTS_STORE = "receipts";
 const ASSETS = [
   "./",
   "./index.html",
-  "./styles.css?v=178",
-  "./vendor/jsqr/jsQR.js?v=178",
-  "./app.js?v=178",
+  "./styles.css?v=179",
+  "./vendor/jsqr/jsQR.js?v=179",
+  "./app.js?v=179",
   "./modules/receipt-parser.js",
   "./modules/receipt-scanner.js",
   "./modules/dates.js",
@@ -29,7 +29,7 @@ const ASSETS = [
   "./modules/data-actions-controller.js",
   "./modules/cloud-controller.js",
   "./modules/reader-access-controller.js",
-  "./manifest.webmanifest?v=178",
+  "./manifest.webmanifest?v=179",
   "./icons/moneyflow.svg",
   "./vendor/pdfjs/pdf.min.mjs",
   "./vendor/pdfjs/pdf.worker.min.mjs",
@@ -65,13 +65,7 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   if (isReceiptShareRequest(event.request)) {
-    const response = handleReceiptShare(event.request);
-    event.respondWith(response);
-    event.waitUntil(
-      response
-        .then(() => focusReceiptAppClient(event.resultingClientId))
-        .catch(() => {}),
-    );
+    event.respondWith(handleReceiptShare(event.request));
     return;
   }
   if (event.request.method !== "GET") return;
@@ -137,50 +131,6 @@ async function handleReceiptShare(request) {
     await saveSharedReceipts(receipts);
   }
   return Response.redirect(launchUrl.href, 303);
-}
-
-async function notifySharedReceiptsAvailable() {
-  const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
-  clients.forEach((client) => client.postMessage({ type: "moneyflow:shared-receipts-ready" }));
-}
-
-async function focusReceiptAppClient(resultingClientId) {
-  await new Promise((resolve) => setTimeout(resolve, 600));
-  const scope = new URL(self.registration.scope);
-  const launchUrl = new URL("./", scope);
-  launchUrl.searchParams.set("shared-checks", "1");
-  launchUrl.searchParams.set("share-event", String(Date.now()));
-  const clients = await self.clients.matchAll({
-    type: "window",
-    includeUncontrolled: true,
-  });
-  const appClients = clients.filter((client) => {
-    try {
-      return new URL(client.url).href.startsWith(scope.href);
-    } catch {
-      return false;
-    }
-  });
-  const target =
-    appClients.find((client) => client.id !== resultingClientId) ||
-    appClients.find((client) => client.id === resultingClientId) ||
-    appClients[0];
-  if (!target) {
-    await self.clients.openWindow?.(launchUrl.href);
-    return;
-  }
-  let navigatedTarget = target;
-  try {
-    navigatedTarget = (await target.navigate?.(launchUrl.href)) || target;
-  } catch {
-    // The queued files are still available to the existing page.
-  }
-  navigatedTarget.postMessage({ type: "moneyflow:shared-receipts-ready" });
-  try {
-    await navigatedTarget.focus?.();
-  } catch {
-    // Android may reject focus, but navigate still delivers the launch URL.
-  }
 }
 
 async function saveSharedReceipts(files) {

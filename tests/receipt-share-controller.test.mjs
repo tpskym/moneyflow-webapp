@@ -1,24 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  bindShareLaunchQueue,
   createReceiptShareController,
   createSharedReceiptDraft,
   setReceiptProcessingState,
 } from "../modules/receipt-share-controller.js";
-
-test("повторный запуск открытой PWA обрабатывается через launchQueue", () => {
-  let consumer;
-  let received = 0;
-  bindShareLaunchQueue(
-    { setConsumer(callback) { consumer = callback; } },
-    () => { received += 1; },
-  );
-
-  consumer({ targetURL: "https://example.test/?shared-checks=1" });
-
-  assert.equal(received, 1);
-});
 
 test("показывает состояние обработки переданного PDF", () => {
   const attributes = new Map();
