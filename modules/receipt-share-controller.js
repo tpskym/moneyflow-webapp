@@ -110,6 +110,7 @@ export function createReceiptShareController(context) {
         `${url.pathname}${url.search}${url.hash}`,
       );
     }
+    if (!sharedLaunch) return;
     if (!("serviceWorker" in navigator)) {
       if (sharedLaunch)
         actions.call(
