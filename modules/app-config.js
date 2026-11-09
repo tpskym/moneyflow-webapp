@@ -81,6 +81,7 @@ export function createElements(doc = document) {
     categoryCreateForm: byId("category-create-form"),
     amountInput: byId("operation-amount"),
     amountDisplay: byId("operation-amount-display"),
+    amountClearButton: byId("operation-amount-clear"),
     amountKeypad: byId("amount-keypad"),
     popularCategories: byId("popular-categories"),
     descriptionInput: byId("operation-description"),

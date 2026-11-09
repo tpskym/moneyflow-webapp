@@ -222,12 +222,14 @@ export function createFilterController(context) {
     }
   }
   function bind() {
-    elements.searchToggleButton?.addEventListener("click", () =>
-      actions.call(
-        "updateSearchVisibility",
-        Boolean(elements.searchField?.hidden),
-      ),
-    );
+    elements.searchToggleButton?.addEventListener("click", () => {
+      const open = Boolean(elements.searchField?.hidden);
+      actions.call("updateSearchVisibility", open);
+      if (!open) {
+        clearFilters();
+        redraw();
+      }
+    });
     elements.searchInput?.addEventListener("input", onSearchInput);
     elements.searchFiltersToggleButton?.addEventListener("click", () =>
       setFiltersExpanded(Boolean(elements.searchFilters?.hidden)),

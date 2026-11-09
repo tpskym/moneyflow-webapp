@@ -114,9 +114,17 @@ export function createCategoryPickerController({
     if (elements.categoryCreateNameInput) elements.categoryCreateNameInput.value = "";
   }
 
+  function setPopoverOpen(expanded) {
+    elements.categoryPickerPopover.hidden = !expanded;
+    const label = expanded ? "Свернуть категории" : "Раскрыть категории";
+    elements.categoryPickerToggle?.setAttribute("aria-expanded", String(expanded));
+    elements.categoryPickerToggle?.setAttribute("aria-label", label);
+    elements.categoryPickerToggle?.setAttribute("title", label);
+  }
+
   function close() {
     if (!elements.categoryPickerPopover) return;
-    elements.categoryPickerPopover.hidden = true;
+    setPopoverOpen(false);
     closeCreator();
     if (!state.categorySearchEditing) return;
     state.categorySearchEditing = false;
@@ -128,7 +136,7 @@ export function createCategoryPickerController({
 
   function open() {
     if (elements.form?.classList.contains("is-readonly") || !elements.categoryPickerPopover) return;
-    elements.categoryPickerPopover.hidden = false;
+    setPopoverOpen(true);
     state.categorySearchText = state.categorySearchEditing ? (elements.categoryPickerInput?.value || "").trim() : "";
     state.categoryCurrentPage = 1;
     renderOptions();

@@ -73,7 +73,7 @@ export function createQuickAddController({
     writeAmountsHidden(state.amountsHidden);
     applyAmountsVisibility();
   }
-  function onAmountKeypadClick(event) {
+  function onAmountControlClick(event) {
     if (state.quickAddMode === "view") return;
     const button = event.target.closest("[data-amount-key], [data-amount-action]");
     if (!button || !elements.amountInput) return;
@@ -120,6 +120,7 @@ export function createQuickAddController({
     if (elements.operationDatePickerInput) elements.operationDatePickerInput.disabled = isView;
     if (elements.categoryPickerToggle) elements.categoryPickerToggle.disabled = isView;
     if (elements.categoryPickerInput) elements.categoryPickerInput.readOnly = isView || !state.categorySearchEditing;
+    if (elements.amountClearButton) elements.amountClearButton.hidden = isView;
     if (elements.amountKeypad) {
       elements.amountKeypad.hidden = isView;
       elements.amountKeypad.querySelectorAll("button").forEach((button) => { button.disabled = isView; });
@@ -220,7 +221,8 @@ export function createQuickAddController({
   function bind() {
     elements.form.addEventListener("submit", onAddOperation);
     elements.quickAddDismissButton?.addEventListener("click", dismiss);
-    elements.amountKeypad?.addEventListener("click", onAmountKeypadClick);
+    elements.amountKeypad?.addEventListener("click", onAmountControlClick);
+    elements.amountClearButton?.addEventListener("click", onAmountControlClick);
     elements.amountsVisibilityToggleButton?.addEventListener("click", onAmountsVisibilityToggle);
     elements.operationDatePickerInput?.addEventListener("change", onDatePickerChange);
     elements.operationDatePickerInput?.addEventListener("input", onDatePickerChange);

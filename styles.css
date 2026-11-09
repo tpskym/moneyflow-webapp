@@ -445,11 +445,10 @@ h1 {
   border-radius: 50%;
 }
 
-.category-picker {
-  display: grid;
-  grid-template-columns: 1fr auto;
+.category-picker,
+.amount-control {
+  display: flex;
   gap: 8px;
-  align-items: center;
 }
 
 .amount-keypad {
@@ -465,6 +464,9 @@ h1 {
 .amount-display {
   display: flex;
   align-items: center;
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
   min-height: 46px;
   padding: 0 12px;
   border: 1px solid var(--line);
@@ -493,13 +495,9 @@ h1 {
   font-size: 13px;
 }
 
-.picker-toggle {
-  width: 54px;
-  min-height: 46px;
-  padding: 0;
-}
-
 #operation-category-input {
+  flex: 1;
+  min-width: 0;
   background: rgba(15, 23, 42, 0.72);
   border: 1px solid var(--line);
   border-radius: 10px;
@@ -812,7 +810,7 @@ textarea:focus-visible {
   display: none;
 }
 
-.search-button {
+.icon-button {
   width: 46px;
   min-width: 46px;
   padding: 0;
@@ -822,7 +820,7 @@ textarea:focus-visible {
   border-color: #60a5fa;
 }
 
-.search-button svg {
+.icon-button svg {
   width: 22px;
   height: 22px;
   fill: none;
@@ -832,7 +830,7 @@ textarea:focus-visible {
   stroke-width: 2;
 }
 
-#search-filters-toggle[aria-expanded="true"] svg {
+.disclosure-button[aria-expanded="true"] svg {
   transform: rotate(90deg);
 }
 

@@ -10,17 +10,17 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="M-Flow" />
     <title>M-Flow</title>
-    <link rel="manifest" href="manifest.webmanifest?v=190" />
+    <link rel="manifest" href="manifest.webmanifest?v=191" />
     <link rel="icon" href="icons/moneyflow.svg?v=120" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="icons/moneyflow.svg?v=120" />
-    <link rel="stylesheet" href="styles.css?v=190" />
+    <link rel="stylesheet" href="styles.css?v=191" />
   </head>
   <body>
     <div class="page">
       <header class="header">
         <div class="header-heading">
           <p class="eyebrow">Личный счёт</p>
-          <div class="brand-title-row"><h1>M-Flow</h1><span class="app-version">v190</span></div>
+          <div class="brand-title-row"><h1>M-Flow</h1><span class="app-version">v191</span></div>
           <p class="subtitle"><span class="subtitle-label">Учет доходов и расходов</span></p>
         </div>
         <div class="header-tools">
@@ -195,7 +195,14 @@
             </label>
             <div class="field field-wide">
               <span>Сумма</span>
-              <output id="operation-amount-display" class="amount-display" aria-live="polite">0</output>
+              <div class="amount-control">
+                <output id="operation-amount-display" class="amount-display" aria-live="polite">0</output>
+                <button id="operation-amount-clear" type="button" class="btn btn--secondary icon-button" data-amount-action="clear" aria-label="Очистить сумму" title="Очистить сумму">
+                  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path d="m6 6 12 12M18 6 6 18"></path>
+                  </svg>
+                </button>
+              </div>
               <input id="operation-amount" type="hidden" value="" />
               <div id="amount-keypad" class="amount-keypad" aria-label="Цифровая клавиатура суммы">
                 <button type="button" class="btn" data-amount-key="1">1</button>
@@ -216,7 +223,11 @@
               <span>Категория</span>
               <div class="category-picker" id="category-picker">
                 <input id="operation-category-input" type="text" autocomplete="off" placeholder="Выберите категорию" readonly />
-                <button type="button" id="category-picker-toggle" class="btn btn--small picker-toggle">▾</button>
+                <button id="category-picker-toggle" type="button" class="btn btn--secondary icon-button disclosure-button" aria-controls="category-picker-popover" aria-expanded="false" aria-label="Раскрыть категории" title="Раскрыть категории">
+                  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path d="m9 6 6 6-6 6"></path>
+                  </svg>
+                </button>
               </div>
               <input type="hidden" id="operation-category" required />
               <div id="category-picker-popover" class="category-picker-popover" hidden>
@@ -314,13 +325,13 @@
           <div class="operations-toolbar">
             <h2>Операции</h2>
             <div class="operations-toolbar-actions">
-              <button id="search-toggle" type="button" class="btn btn--secondary search-button" aria-controls="search-section" aria-expanded="false" aria-label="Открыть поиск" title="Открыть поиск">
+              <button id="search-toggle" type="button" class="btn btn--secondary icon-button" aria-controls="search-section" aria-expanded="false" aria-label="Открыть поиск" title="Открыть поиск">
                 <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                   <circle cx="10.5" cy="10.5" r="5.5"></circle>
                   <path d="m15 15 5 5"></path>
                 </svg>
               </button>
-              <button id="clear-search-filters" type="button" class="btn btn--secondary search-button" aria-label="Сбросить поиск и фильтры" title="Сбросить поиск и фильтры">
+              <button id="clear-search-filters" type="button" class="btn btn--secondary icon-button" aria-label="Сбросить поиск и фильтры" title="Сбросить поиск и фильтры">
                 <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                   <path d="M20 4H4l6 7v6l4 3v-9Z"></path>
                   <path d="M3 3l18 18"></path>
@@ -336,7 +347,7 @@
               </div>
               <div class="search-input-row">
                 <input id="search-input" type="search" inputmode="search" placeholder="По описанию, категории или сумме" />
-                <button id="search-filters-toggle" type="button" class="btn btn--secondary search-button" aria-controls="search-filters" aria-expanded="true" aria-label="Свернуть фильтры" title="Свернуть фильтры">
+                <button id="search-filters-toggle" type="button" class="btn btn--secondary icon-button disclosure-button" aria-controls="search-filters" aria-expanded="true" aria-label="Свернуть фильтры" title="Свернуть фильтры">
                   <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                     <path d="m9 6 6 6-6 6"></path>
                   </svg>
@@ -398,8 +409,8 @@
     <div id="app-notice" class="app-notice" role="status" aria-live="polite" hidden></div>
 
     <script src="https://accounts.google.com/gsi/client" async></script>
-    <script src="vendor/jsqr/jsQR.js?v=190"></script>
-    <script type="module" src="app.js?v=190"></script>
+    <script src="vendor/jsqr/jsQR.js?v=191"></script>
+    <script type="module" src="app.js?v=191"></script>
   </body>
 </html>
 
