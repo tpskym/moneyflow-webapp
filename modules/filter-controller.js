@@ -68,7 +68,6 @@ export function createFilterController(context) {
     setDateFilter(true, "");
     setDateFilter(false, "");
     setTypeFilter("all");
-    setFiltersExpanded(true);
     resetPage();
   }
   function onYearClick(event) {
@@ -227,6 +226,7 @@ export function createFilterController(context) {
       actions.call("updateSearchVisibility", open);
       if (!open) {
         clearFilters();
+        setFiltersExpanded(true);
         redraw();
       }
     });
