@@ -133,7 +133,7 @@ import { createAppUpdateController } from "./modules/app-update.js";
   const appUiController = createAppUiController(context);
   const filterController = createFilterController(context);
   const receiptShareController = createReceiptShareController(context);
-  const appUpdateController = createAppUpdateController({ currentVersion: 189 });
+  const appUpdateController = createAppUpdateController({ currentVersion: 190 });
   const operationsListController = createOperationsListController({
     operationsList: elements.operationsList,
     getAccessMode: () => state.syncSettings.accessMode,
@@ -217,6 +217,7 @@ import { createAppUpdateController } from "./modules/app-update.js";
   function registerActions() {
     const { actions } = context;
     actions.register("render", render);
+    actions.register("clearOperationFilters", filterController.clearFilters);
     actions.register("setSyncStatus", setSyncStatus);
     actions.register("showAppNotice", showAppNotice);
     actions.register("escapeHtml", escapeHtml);
@@ -318,6 +319,8 @@ import { createAppUpdateController } from "./modules/app-update.js";
 
   function render() {
     dataActionsController.updatePendingCloudChangesUI();
+    filtersView.renderYearFilters();
+    filtersView.renderPeriodFilters();
     const enriched = enrichOperationsWithBalance(
       state.operations,
       getCategoryName,
@@ -332,10 +335,9 @@ import { createAppUpdateController } from "./modules/app-update.js";
     filtersView.updateBalances(
       filtered.reduce((sum, operation) => sum + signedAmount(operation), 0),
     );
-    filtersView.renderPeriodFilters();
     filtersView.renderCategoryCharts(filtered);
-    filtersView.renderYearFilters();
     filtersView.renderCategoryFilters();
+    filtersView.updateSearchResults(filtered.length);
     categoryPickerController.renderOptions();
     operationsListController.render(visible);
     filtersView.updatePager(filtered.length, pages);
@@ -425,7 +427,7 @@ import { createAppUpdateController } from "./modules/app-update.js";
       window.location.reload();
     });
     navigator.serviceWorker
-      .register("sw.js?v=189", { updateViaCache: "none" })
+      .register("sw.js?v=190", { updateViaCache: "none" })
       .then((registration) => registration.update())
       .catch(() => {});
   }

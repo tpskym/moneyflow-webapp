@@ -131,31 +131,14 @@ export function createDataActionsController(context) {
       googleAccountEmail: "",
       lastSuccessfulSyncAt: "",
     };
-    state.searchText = "";
-    state.activeTypeFilter = "all";
-    state.activeYearFilter = new Set();
-    state.activeMonthFilter = new Set();
-    state.activeDayFilter = new Set();
-    state.activeCategoryFilter = new Set();
-    state.dateFrom = "";
-    state.dateTo = "";
-    state.currentPage = 1;
+    call("clearOperationFilters");
     state.categorySearchText = "";
     state.categoryCurrentPage = 1;
-    [
-      elements.categorySelect,
-      elements.categoryPickerInput,
-      elements.dateFromInput,
-      elements.dateToInput,
-    ]
+    [elements.categorySelect, elements.categoryPickerInput]
       .filter(Boolean)
       .forEach((input) => {
         input.value = "";
       });
-    if (elements.dateFromDisplay)
-      elements.dateFromDisplay.textContent = "Выбрать дату";
-    if (elements.dateToDisplay)
-      elements.dateToDisplay.textContent = "Выбрать дату";
     storage.write(storage.keys.operations, state.operations);
     storage.write(storage.keys.categories, state.categories);
     storage.write(storage.keys.syncSettings, state.syncSettings);

@@ -1,3 +1,5 @@
+import { normalizeTextForSearch } from "./operation-core.js";
+
 export function getCategoryChartEntries(operations, type, getCategoryById, getCategoryName, round2) {
   const totals = new Map();
   operations.filter((operation) => operation.type === type).forEach((operation) => {
@@ -42,9 +44,9 @@ export function createFiltersView({
   function renderYearFilters() {
     if (!elements.yearFilterContainer) return;
     const years = getAvailableOperationYears(state.operations);
-    const selected = state.activeYearFilter instanceof Set ? state.activeYearFilter : new Set();
+    const selected = state.activeYearFilter;
     const buttons = [{ value: "all", label: "Все" }, ...years.map((year) => ({ value: String(year), label: String(year) }))];
-    if (selected.size && ![...selected].some((year) => years.includes(year))) state.activeYearFilter = new Set();
+    if (selected.size && ![...selected].some((year) => years.includes(year))) selected.clear();
     elements.yearFilterContainer.innerHTML = buttons.map((year) => `<button type="button" class="chip ${(year.value === "all" ? selected.size === 0 : selected.has(Number(year.value))) ? "active" : ""}" data-year="${year.value}">${year.label}</button>`).join("");
   }
   function renderPeriodFilters() {
@@ -103,7 +105,6 @@ export function createFiltersView({
   function updateSearchVisibility(open, { focus = false } = {}) {
     if (!elements.searchField || !elements.searchToggleButton) return;
     elements.searchField.hidden = !open;
-    if (elements.searchFilters) elements.searchFilters.hidden = !open;
     elements.searchSection?.classList.toggle("is-open", open);
     elements.searchToggleButton.setAttribute("aria-expanded", String(open));
     elements.searchToggleButton.classList.toggle("is-open", open);
@@ -111,6 +112,18 @@ export function createFiltersView({
     elements.searchToggleButton.setAttribute("aria-label", label);
     elements.searchToggleButton.setAttribute("title", label);
     if (focus) elements.searchInput?.focus();
+  }
+  function updateSearchResults(total) {
+    const status = elements.searchResultsStatus;
+    if (!status) return;
+    const hasFilters = Boolean(
+      state.activeYearFilter.size || state.activeMonthFilter.size ||
+      state.activeDayFilter.size || state.activeCategoryFilter.size ||
+      state.dateFrom || state.dateTo || state.activeTypeFilter !== "all"
+    );
+    const count = `Найдено: ${total}`;
+    const message = hasFilters ? `${count} · Фильтр задан` : normalizeTextForSearch(state.searchText) ? count : "";
+    if (status.textContent !== message) status.textContent = message;
   }
   function updatePager(totalItems, totalPages) {
     const sentinel = elements.operationsLoadSentinel;
@@ -128,5 +141,5 @@ export function createFiltersView({
     }, { rootMargin: "0px" });
     operationsLoadObserver.observe(sentinel);
   }
-  return { renderCategoryCharts, renderCategoryFilters, renderPeriodFilters, renderYearFilters, updateBalances, updatePager, updateSearchVisibility };
+  return { renderCategoryCharts, renderCategoryFilters, renderPeriodFilters, renderYearFilters, updateBalances, updatePager, updateSearchResults, updateSearchVisibility };
 }

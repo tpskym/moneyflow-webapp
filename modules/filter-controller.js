@@ -1,3 +1,5 @@
+import { normalizeTextForSearch } from "./operation-core.js";
+
 export function applyPeriodSelection(state, kind, value, mode = "toggle") {
   const values =
     kind === "month" ? state.activeMonthFilter : state.activeDayFilter;
@@ -29,7 +31,6 @@ export function applyTypeFilter(state, value, chips = []) {
 
 export function createFilterController(context) {
   const { elements, state, actions } = context;
-  let searchDebounce;
   let chartsOpen = false;
   let periodDrag = null;
   let ignorePeriodClick = false;
@@ -38,14 +39,37 @@ export function createFilterController(context) {
   function resetPage() {
     state.currentPage = 1;
   }
+  function setFiltersExpanded(expanded) {
+    const { searchFilters, searchFiltersToggleButton } = elements;
+    if (searchFilters) searchFilters.hidden = !expanded;
+    const label = expanded ? "Свернуть фильтры" : "Раскрыть фильтры";
+    searchFiltersToggleButton?.setAttribute("aria-expanded", String(expanded));
+    searchFiltersToggleButton?.setAttribute("aria-label", label);
+    searchFiltersToggleButton?.setAttribute("title", label);
+  }
   function onSearchInput(event) {
-    clearTimeout(searchDebounce);
-    const value = event.target.value;
-    searchDebounce = setTimeout(() => {
-      state.searchText = value;
-      resetPage();
-      redraw();
-    }, 280);
+    const hadQuery = Boolean(normalizeTextForSearch(state.searchText));
+    state.searchText = event.target.value;
+    const hasQuery = Boolean(normalizeTextForSearch(state.searchText));
+    if (hasQuery !== hadQuery) setFiltersExpanded(!hasQuery);
+    resetPage();
+    redraw();
+  }
+  function clearFilters() {
+    state.searchText = "";
+    state.activeYearFilter.clear();
+    state.activeMonthFilter.clear();
+    state.activeDayFilter.clear();
+    state.activeCategoryFilter.clear();
+    if (elements.searchInput) elements.searchInput.value = "";
+    for (const picker of [elements.dateFromPickerInput, elements.dateToPickerInput]) {
+      if (picker) picker.value = "";
+    }
+    setDateFilter(true, "");
+    setDateFilter(false, "");
+    setTypeFilter("all");
+    setFiltersExpanded(true);
+    resetPage();
   }
   function onYearClick(event) {
     const value = event.target.closest("[data-year]")?.dataset.year;
@@ -140,18 +164,20 @@ export function createFilterController(context) {
       ignorePeriodClick = false;
     }, 250);
   }
-  function onDateChange(event) {
-    const input = event.target;
-    const from = input === elements.dateFromPickerInput;
+  function setDateFilter(from, value) {
     const display = from ? elements.dateFromDisplay : elements.dateToDisplay;
     const dateInput = from ? elements.dateFromInput : elements.dateToInput;
-    const value = input?.value
-      ? actions.call("normalizeDateForInput", input.value)
-      : "";
     if (dateInput) dateInput.value = value;
     if (display) display.textContent = value || "Выбрать дату";
     if (from) state.dateFrom = value;
     else state.dateTo = value;
+  }
+  function onDateChange(event) {
+    const input = event.target;
+    setDateFilter(
+      input === elements.dateFromPickerInput,
+      input.value ? actions.call("normalizeDateForInput", input.value) : "",
+    );
     resetPage();
     redraw();
   }
@@ -169,16 +195,17 @@ export function createFilterController(context) {
     resetPage();
     redraw();
   }
-  function onTypeClick(event) {
-    const value = event.target
-      .closest("[data-type]")
-      ?.getAttribute("data-type");
-    if (!value) return;
+  function setTypeFilter(value) {
     applyTypeFilter(
       state,
       value,
       elements.typeFilterContainer?.querySelectorAll("[data-type]") || [],
     );
+  }
+  function onTypeClick(event) {
+    const value = event.target.closest("[data-type]")?.getAttribute("data-type");
+    if (!value) return;
+    setTypeFilter(value);
     resetPage();
     redraw();
   }
@@ -202,6 +229,13 @@ export function createFilterController(context) {
       ),
     );
     elements.searchInput?.addEventListener("input", onSearchInput);
+    elements.searchFiltersToggleButton?.addEventListener("click", () =>
+      setFiltersExpanded(Boolean(elements.searchFilters?.hidden)),
+    );
+    elements.clearSearchFiltersButton?.addEventListener("click", () => {
+      clearFilters();
+      redraw();
+    });
     elements.yearFilterContainer?.addEventListener("click", onYearClick);
     [elements.monthFilterContainer, elements.dayFilterContainer].forEach(
       (container) => {
@@ -238,5 +272,5 @@ export function createFilterController(context) {
         actions.call("openNativeDatePicker", elements.dateToPickerInput),
       );
   }
-  return { bind, updateChartsVisibility };
+  return { bind, clearFilters, updateChartsVisibility };
 }
